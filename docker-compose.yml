@@ -1,0 +1,22 @@
+services:
+  taiga-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: taiga-mcpserver:latest
+    container_name: taiga-mcp-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - TAIGA_API_URL=${TAIGA_API_URL:-https://api.taiga.io}
+      - TAIGA_AUTH_TOKEN=${TAIGA_AUTH_TOKEN:-}
+      - TAIGA_DEFAULT_PROJECT=${TAIGA_DEFAULT_PROJECT:-}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

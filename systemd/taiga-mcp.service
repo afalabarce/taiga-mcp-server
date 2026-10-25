@@ -1,0 +1,34 @@
+[Unit]
+Description=Taiga Model Context Protocol (MCP) Server
+After=network.target
+
+[Service]
+Type=simple
+User=taiga
+Group=taiga
+WorkingDirectory=/opt/taiga-mcp
+
+# Environment variables can be defined here or in /etc/taiga-mcp/taiga-mcp.env
+EnvironmentFile=-/etc/taiga-mcp/taiga-mcp.env
+Environment=HOST=127.0.0.1
+Environment=PORT=8080
+Environment=TAIGA_API_URL=https://api.taiga.io
+
+ExecStart=/usr/bin/java -Xms128m -Xmx512m -XX:+UseG1GC -jar /opt/taiga-mcp/server-standalone.jar
+
+Restart=always
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+# Standard logs to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=taiga-mcp
+
+[Install]
+WantedBy=multi-user.target
