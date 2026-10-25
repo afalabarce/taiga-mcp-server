@@ -100,7 +100,8 @@ abstract class ServerDeployTask : DefaultTask() {
             runStep(out, "Moviendo librerías de servicio a la raiz") {
                 val moveCommand = "extractedDir=\$(ls -d */ 2>/dev/null | grep -E '^server-' | head -n 1 | tr -d '/'); " +
                         "if [ -z \"\$extractedDir\" ]; then extractedDir=\$(basename \"$zipFileName\" .zip | tr '[:upper:]' '[:lower:]'); fi; " +
-                        "if [ -n \"\$extractedDir\" ] && [ -d \"\$extractedDir\" ]; then cp -rf \"\$extractedDir\"/* . && chmod +x bin/* 2>/dev/null || true; fi"
+                        "if [ -n \"\$extractedDir\" ] && [ -d \"\$extractedDir\" ]; then cp -rf \"\$extractedDir\"/* . && chmod +x server bin/* 2>/dev/null || true; fi; " +
+                        "if [ ! -f server ] && [ -f bin/server ]; then cp -f bin/server server && chmod +x server 2>/dev/null || true; fi"
                 executeSshCommand(session, moveCommand)
             }
 
