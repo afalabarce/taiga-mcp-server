@@ -373,6 +373,38 @@ https://taiga-mcp.tudominio.com/sse?token=tu_token_taiga
 
 ## 🐧 Despliegue en Servidor Remoto Linux
 
+### 🚀 Despliegue Automatizado con Gradle (`./gradlew :server:deploy`)
+
+El proyecto dispone de la tarea Gradle `:server:deploy` (desarrollada con `JSch` en `buildSrc/src/main/kotlin/ServerDeployTask.kt`), idéntica al flujo de publicación de `Aplicacion-KMP-Oposiciones-AGE`. Esta tarea compila el proyecto, genera el paquete de distribución `distZip`, lo sube vía SFTP al servidor remoto, descomprime las librerías, configura los recursos y reinicia el servicio automáticamente.
+
+#### Variables de Entorno Requeridas:
+- `TAIGA_MCP_SERVER`: Host o dirección IP del servidor remoto al que publicar (ej. `taiga-mcp.tudominio.com`).
+- `TAIGA_MCP_SHELL_USER`: Usuario con el que iniciar sesión SSH/SFTP.
+- `TAIGA_MCP_SHELL_PASS`: Contraseña del usuario para la sesión SSH/SFTP.
+- `TAIGA_MCP_SHELL_PORT`: *(Opcional)* Puerto SSH del servidor (por defecto `22`).
+- `TAIGA_MCP_SERVICE`: *(Opcional)* Nombre del servicio systemd a reiniciar (por defecto `taiga-mcp.service`).
+
+#### Ejecución del Despliegue:
+```bash
+export TAIGA_MCP_SERVER="taiga-mcp.tudominio.com"
+export TAIGA_MCP_SHELL_USER="mi_usuario_ssh"
+export TAIGA_MCP_SHELL_PASS="mi_password_seguro"
+
+# Ejecutar despliegue completo
+./gradlew :server:deploy
+```
+
+#### Flujo Automatizado Paso a Paso:
+1. **Compilación y Empaquetado**: Genera automáticamente `server-standalone.jar` y el bundle de distribución `server-1.0.0.zip` vía `:server:distZip`.
+2. **Subida SFTP**: Sube el archivo zip y las plantillas de configuración (`application.yaml` y `logback.xml`).
+3. **Descompresión Remota**: Ejecuta `unzip -o -L <zip>` en el servidor vía canal SSH `exec`.
+4. **Despliegue de Binarios**: Mueve las librerías a la raíz del directorio de trabajo y otorga permisos de ejecución a los binarios (`chmod +x bin/*`).
+5. **Configuración de Recursos**: Crea la carpeta `resources/` y copia `application.yaml` y `logback.xml` **únicamente si no existen previamente en el servidor**, preservando ajustes personalizados en producción.
+6. **Limpieza**: Elimina los archivos temporales y carpetas residuales de la descompresión.
+7. **Reinicio del Servicio**: Ejecuta `systemctl --user daemon-reload && systemctl --user restart taiga-mcp.service`.
+
+---
+
 ### Opción 1: Servicio Nativo systemd + Nginx
 
 Esta es la opción idónea para servidores dedicados o VPS donde se desea la máxima velocidad y el mínimo consumo de memoria.
