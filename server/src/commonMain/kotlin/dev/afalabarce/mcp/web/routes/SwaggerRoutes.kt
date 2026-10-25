@@ -4,6 +4,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.OpenApiDoc
 import io.ktor.openapi.OpenApiInfo
+import io.ktor.openapi.jsonSchema
 import io.ktor.server.auth.principal
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.request.receive
@@ -58,6 +59,15 @@ fun Route.swaggerDocsRoutes() {
         )
         val text = routingSource.read(call.application, baseDoc)
         call.respondText(text.content, ContentType.Application.Json)
+    }.describe {
+        summary = "OpenAPI Specification Document"
+        description = "Provides runtime OpenAPI 3.0 specification for this MCP server"
+        tag("Health")
+        responses {
+            HttpStatusCode.OK {
+                description = "OpenAPI specification document"
+            }
+        }
     }
 }
 
@@ -117,6 +127,9 @@ fun Route.mcpToolAndTaigaRoutes(
         requestBody {
             description = "Arguments object matching the tool's JSON schema"
             required = false
+            ContentType.Application.Json {
+                schema = jsonSchema<JsonObject>()
+            }
         }
         responses {
             HttpStatusCode.OK {
@@ -195,6 +208,9 @@ fun Route.mcpToolAndTaigaRoutes(
         requestBody {
             description = "User story payload"
             required = true
+            ContentType.Application.Json {
+                schema = jsonSchema<JsonObject>()
+            }
         }
         responses {
             HttpStatusCode.OK { description = "Created user story" }
@@ -246,6 +262,9 @@ fun Route.mcpToolAndTaigaRoutes(
         requestBody {
             description = "Task payload"
             required = true
+            ContentType.Application.Json {
+                schema = jsonSchema<JsonObject>()
+            }
         }
         responses {
             HttpStatusCode.OK { description = "Created task" }

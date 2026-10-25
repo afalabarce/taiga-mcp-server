@@ -1,6 +1,8 @@
 package dev.afalabarce.mcp.web.routes
 
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.openapi.jsonSchema
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -70,6 +72,9 @@ fun Route.loginRoutes(
         requestBody {
             description = "Taiga user credentials"
             required = true
+            ContentType.Application.Json {
+                schema = jsonSchema<TaigaLoginRequest>()
+            }
         }
         responses {
             HttpStatusCode.OK {
@@ -117,6 +122,9 @@ fun Route.configRoutes(
         requestBody {
             description = "Configuration parameters to update"
             required = true
+            ContentType.Application.Json {
+                schema = jsonSchema<TaigaConfigUpdateRequest>()
+            }
         }
         responses {
             HttpStatusCode.OK {

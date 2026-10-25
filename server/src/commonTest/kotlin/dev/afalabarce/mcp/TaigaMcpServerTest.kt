@@ -360,6 +360,44 @@ class TaigaMcpServerTest {
     }
 
     @Test
+    fun testOpenApiSpecificationStrictValidation() = io.ktor.server.testing.testApplication {
+        val configManager = ConfigManager(TaigaConfig())
+        val clientFactory = TaigaClientFactory(configManager)
+        val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
+        val mcpServer = McpServer(toolRegistry, configManager)
+        val sessionManager = dev.afalabarce.mcp.mcp.server.McpSessionManager(mcpServer)
+
+        application {
+            configureServer(
+                configManager = configManager,
+                mcpServer = mcpServer,
+                sessionManager = sessionManager,
+                toolRegistry = toolRegistry,
+                clientFactory = clientFactory
+            )
+        }
+
+        val openApiResp = client.get("/openapi.json")
+        assertEquals(HttpStatusCode.OK, openApiResp.status)
+        val jsonText = openApiResp.bodyAsText()
+        val json = kotlinx.serialization.json.Json.parseToJsonElement(jsonText).jsonObject
+        val paths = json["paths"]!!.jsonObject
+
+        for ((path, pathItem) in paths) {
+            for ((method, op) in pathItem.jsonObject) {
+                if (method in listOf("get", "post", "put", "delete", "patch")) {
+                    val opObj = op.jsonObject
+                    assertTrue(opObj.containsKey("responses"), "Operation $method $path MUST have 'responses'")
+                    if (opObj.containsKey("requestBody")) {
+                        val reqBody = opObj["requestBody"]!!.jsonObject
+                        assertTrue(reqBody.containsKey("content"), "Operation $method $path requestBody MUST have 'content'")
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun testUnknownMethodReturnsError() = runBlocking {
         val configManager = ConfigManager()
         val clientFactory = TaigaClientFactory(configManager)

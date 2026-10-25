@@ -1,6 +1,8 @@
 package dev.afalabarce.mcp.web.routes
 
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.openapi.jsonSchema
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveText
@@ -54,6 +56,18 @@ fun Route.mcpRoutes(
         } finally {
             sessionManager.removeSession(session.id)
         }
+    }.describe {
+        summary = "MCP Server-Sent Events Endpoint (Protected)"
+        description = "Requires Bearer authentication. Initiates an SSE streaming connection for Model Context Protocol sessions."
+        tag("MCP Protocol")
+        responses {
+            HttpStatusCode.OK {
+                description = "SSE event stream opened"
+            }
+            HttpStatusCode.Unauthorized {
+                description = "Unauthorized - Missing or invalid Bearer token"
+            }
+        }
     }
 
     // Client posts JSON-RPC messages to this endpoint
@@ -92,6 +106,9 @@ fun Route.mcpRoutes(
         requestBody {
             description = "JSON-RPC 2.0 request"
             required = true
+            ContentType.Application.Json {
+                schema = jsonSchema<JsonRpcRequest>()
+            }
         }
         responses {
             HttpStatusCode.Accepted {
@@ -132,6 +149,9 @@ fun Route.mcpRoutes(
         requestBody {
             description = "JSON-RPC 2.0 request payload"
             required = true
+            ContentType.Application.Json {
+                schema = jsonSchema<JsonRpcRequest>()
+            }
         }
         responses {
             HttpStatusCode.OK {
