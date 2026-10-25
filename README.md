@@ -92,7 +92,7 @@ taiga-mcpserver/
     ├── build.gradle.kts
     └── src/
         ├── commonMain/
-        │   ├── kotlin/io/taiga/mcp/
+        │   ├── kotlin/dev/afalabarce/mcp/
         │   │   ├── Main.kt                     # Entrypoint CLI y servidor Ktor CIO
         │   │   ├── config/                     # Configuración thread-safe (StateFlow/Atomic)
         │   │   │   ├── TaigaConfig.kt          # Modelos de configuración y enmascaramiento
@@ -127,7 +127,7 @@ taiga-mcpserver/
         │   │           ├── SwaggerRoutes.kt    # /swagger, /openapi.json, tests interactivos
         │   │           └── HealthRoutes.kt     # /health, /
         │   └── resources/logback.xml
-        └── commonTest/kotlin/io/taiga/mcp/
+        └── commonTest/kotlin/dev/afalabarce/mcp/
             └── TaigaMcpServerTest.kt           # Suite de pruebas unitarias y de integración
 ```
 

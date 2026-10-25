@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+group = "dev.afalabarce.mcp"
 version = providers.gradleProperty("serverVersion").orElse("1.0.0").get()
 
 kotlin {
@@ -56,7 +57,7 @@ kotlin {
 tasks.register<JavaExec>("run") {
     group = "application"
     description = "Runs the MCP Taiga server application"
-    mainClass.set("io.taiga.mcp.MainKt")
+    mainClass.set("dev.afalabarce.mcp.MainKt")
     val jvmTarget = kotlin.targets.getByName("jvm") as org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
     val compilation = jvmTarget.compilations.getByName("main")
     classpath(compilation.output.allOutputs, configurations.getByName("jvmRuntimeClasspath"))
@@ -77,7 +78,7 @@ tasks.register<Jar>("fatJar") {
     })
 
     manifest {
-        attributes["Main-Class"] = "io.taiga.mcp.MainKt"
+        attributes["Main-Class"] = "dev.afalabarce.mcp.MainKt"
     }
 }
 

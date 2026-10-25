@@ -10,5 +10,5 @@
     </root>
 
     <logger name="io.ktor" level="INFO"/>
-    <logger name="io.taiga" level="DEBUG"/>
+    <logger name="dev.afalabarce" level="DEBUG"/>
 </configuration>
