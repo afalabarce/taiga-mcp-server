@@ -16,7 +16,7 @@ Permite la gestión completa de proyectos, historias de usuario, tareas, épicas
 - [Parametrización Remota Dinámica](#-parametrización-remota-dinámica)
 - [Swagger UI y Documentación OpenAPI](#-swagger-ui-y-documentación-openapi)
 - [Catálogo de Herramientas MCP](#-catálogo-de-herramientas-mcp)
-- [Conexión con Clientes MCP (Claude, Cursor, etc.)](#-conexión-con-clientes-mcp)
+- [Configuración en IDEs Agénticos y Clientes MCP (mcp.json)](#-configuración-en-ides-agénticos-y-clientes-mcp-mcpjson)
 - [Despliegue en Servidor Remoto Linux](#-despliegue-en-servidor-remoto-linux)
   - [Opción 1: Servicio Nativo systemd + Nginx](#opción-1-servicio-nativo-systemd--nginx)
   - [Opción 2: Docker y Docker Compose + Nginx](#opción-2-docker-y-docker-compose--nginx)
@@ -343,18 +343,73 @@ El servidor registra las siguientes herramientas bajo la especificación Model C
 
 ---
 
-## 🤖 Conexión con Clientes MCP
+## 🤖 Configuración en IDEs Agénticos y Clientes MCP (`mcp.json`)
 
-### 1. Conexión Remota por SSE (Recomendada para Servidores Linux)
+El servidor cumple íntegramente con la especificación **Model Context Protocol (MCP)** (`2024-11-05`), permitiendo su uso inmediato en entornos de desarrollo asistidos por IA y herramientas agénticas como **Cursor**, **Windsurf**, **Claude Desktop**, **Continue**, **Cline / Roo Code** o **Antigravity**.
 
-Los clientes remotos como **Cursor**, **Continue** o **LibreChat** pueden conectarse al endpoint SSE:
+---
+
+### 📍 Ubicación del archivo de configuración `mcp.json`
+
+Dependiendo del entorno o IDE agéntico utilizado, el archivo de configuración se encuentra en:
+
+| Entorno / IDE Agéntico | Tipo de Ámbito | Ruta del archivo |
+|---|---|---|
+| **Cursor** | Global (Usuario) | `~/.cursor/mcp.json` |
+| **Cursor** | Proyecto específico | `<directorio-del-proyecto>/.cursor/mcp.json` |
+| **Windsurf** | Global (Usuario) | `~/.codeium/windsurf/mcp_config.json` |
+| **Claude Desktop** | macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **Claude Desktop** | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| **Claude Desktop** | Linux | `~/.config/Claude/claude_desktop_config.json` |
+| **VS Code (Cline / Roo)** | Extensión | Configuración accesible vía UI o `cline_mcp_settings.json` |
+| **Antigravity / Gemini CLI** | Global / Proyecto | `~/.gemini/antigravity/mcp.json` o `.gemini/mcp.json` |
+
+---
+
+### 🔑 Paso Previo: Obtención del Token de Autenticación
+
+Todas las peticiones al MCP están protegidas por autenticación Bearer. Si no conoces tu token de Taiga, puedes obtenerlo fácilmente autenticándote contra el servidor MCP desplegado:
+
+```bash
+curl -X POST https://taiga-mcp.afalabarce.dev/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "tu_usuario_taiga",
+    "password": "tu_password_taiga",
+    "apiUrl": "https://api.taiga.io"
+  }'
 ```
-https://taiga-mcp.tudominio.com/sse?token=tu_token_taiga
+
+La respuesta te entregará el `authToken` (JWT de Taiga) para usarlo en tu `mcp.json`.
+
+---
+
+### 🌐 Opción 1: Conexión Remota SSE (Recomendada para Servidor Desplegado)
+
+Esta modalidad se conecta a tu servidor Linux en producción a través del túnel seguro HTTPS / SSE.
+
+#### Formato A: Configuración SSE Nativa (Cursor, Windsurf, Antigravity)
+Si tu IDE agéntico admite conexiones SSE remotas directamente a través de una URL:
+
+```json
+{
+  "mcpServers": {
+    "taiga": {
+      "url": "https://taiga-mcp.afalabarce.dev/sse?token=TU_TOKEN_BEARER_TAIGA",
+      "headers": {
+        "Authorization": "Bearer TU_TOKEN_BEARER_TAIGA",
+        "X-Taiga-Project": "mi-proyecto-slug"
+      }
+    }
+  }
+}
 ```
 
-### 2. Configuración en Claude Desktop (`claude_desktop_config.json`)
+> **💡 Nota sobre Autenticación en SSE**: Algunos clientes MCP no transmiten cabeceras HTTP personalizadas al abrir el canal `EventSource`. Por esta razón, el servidor acepta el token tanto en la cabecera `Authorization: Bearer <token>` como en el parámetro query `?token=<token>`. Se recomienda incluir ambos para máxima compatibilidad.
 
-#### Opción A: Vía SSE Remoto (usando `mcp-remote`)
+#### Formato B: Mediante Proxy `mcp-remote` (Claude Desktop y Clientes Stdio-to-SSE)
+Para clientes como Claude Desktop que requieren un proceso local para conectarse a un SSE remoto:
+
 ```json
 {
   "mcpServers": {
@@ -363,14 +418,42 @@ https://taiga-mcp.tudominio.com/sse?token=tu_token_taiga
       "args": [
         "-y",
         "mcp-remote",
-        "https://taiga-mcp.tudominio.com/sse?token=tu_token_taiga"
-      ]
+        "https://taiga-mcp.afalabarce.dev/sse?token=TU_TOKEN_BEARER_TAIGA"
+      ],
+      "env": {
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
     }
   }
 }
 ```
 
-#### Opción B: Vía Stdio Local (Ejecución Directa)
+---
+
+### 💻 Opción 2: Conexión Local por Stdio (Sin Servidor Remoto)
+
+Si prefieres ejecutar el binario localmente en tu máquina como un proceso hijo del IDE agéntico, utiliza el modo `--stdio`.
+
+#### Formato A: Utilizando el script ejecutable `server` / `bin/server`
+```json
+{
+  "mcpServers": {
+    "taiga": {
+      "command": "/ruta/absoluta/a/taiga-mcpserver/server/build/distributions/server-1.0.0/server",
+      "args": [
+        "--stdio"
+      ],
+      "env": {
+        "TAIGA_API_URL": "https://api.taiga.io",
+        "TAIGA_AUTH_TOKEN": "TU_TOKEN_BEARER_TAIGA",
+        "TAIGA_DEFAULT_PROJECT": "mi-proyecto-slug"
+      }
+    }
+  }
+}
+```
+
+#### Formato B: Utilizando el JAR independiente directamente con `java`
 ```json
 {
   "mcpServers": {
@@ -381,13 +464,25 @@ https://taiga-mcp.tudominio.com/sse?token=tu_token_taiga
         "/ruta/absoluta/a/taiga-mcpserver/server/build/libs/server-standalone.jar",
         "--stdio",
         "--taiga-url", "https://api.taiga.io",
-        "--taiga-token", "tu_token_taiga",
-        "--taiga-project", "mi-proyecto"
+        "--taiga-token", "TU_TOKEN_BEARER_TAIGA",
+        "--taiga-project", "mi-proyecto-slug"
       ]
     }
   }
 }
 ```
+
+---
+
+### 💡 Capacidades y Ejemplos de Uso con el Asistente IA
+
+Una vez configurado en `mcp.json`, el agente inteligente dispondrá del catálogo de herramientas de Taiga. Puedes pedirle en lenguaje natural cosas como:
+
+- *"¿Cuáles son las tareas pendientes del sprint actual en el proyecto backend?"*
+- *"Crea una historia de usuario titulada 'Implementar login OAuth2' con descripción técnica y etiquetas 'seguridad, backend'."*
+- *"Consulta las incidencias críticas abiertas y genera un informe de estado."*
+- *"Actualiza el estado de la tarea #45 a 'Resuelta' y asígnala a mi usuario."*
+- *"Crea una página wiki con la documentación de despliegue en formato Markdown."*
 
 ---
 
