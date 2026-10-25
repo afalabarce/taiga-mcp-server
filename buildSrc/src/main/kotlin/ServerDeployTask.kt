@@ -29,6 +29,11 @@ abstract class ServerDeployTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NAME_ONLY)
     abstract val logbackXmlFile: RegularFileProperty
 
+    @get:InputFile
+    @get:Optional
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val userServiceFile: RegularFileProperty
+
     @TaskAction
     fun deploy() {
         val out: StyledTextOutput = services.get(StyledTextOutputFactory::class.java).create("ServerDeployTask")
@@ -76,6 +81,11 @@ abstract class ServerDeployTask : DefaultTask() {
                     if (logbackFile != null && logbackFile.exists()) {
                         sftpChannel.put(logbackFile.absolutePath, "logback.xml.tmp", ChannelSftp.OVERWRITE)
                     }
+
+                    val serviceFile = userServiceFile.orNull?.asFile
+                    if (serviceFile != null && serviceFile.exists()) {
+                        sftpChannel.put(serviceFile.absolutePath, "taiga-mcp.service.tmp", ChannelSftp.OVERWRITE)
+                    }
                 } finally {
                     sftpChannel.disconnect()
                 }
@@ -95,10 +105,11 @@ abstract class ServerDeployTask : DefaultTask() {
             }
 
             // 4. Configurando carpeta resources y archivos de configuración (solo si no existen en el servidor)...
-            runStep(out, "Configurando carpeta resources") {
-                val resourcesCommand = "mkdir -p resources && " +
+            runStep(out, "Configurando carpeta resources y servicio") {
+                val resourcesCommand = "mkdir -p resources ~/.config/systemd/user && " +
                         "if [ ! -f resources/application.yaml ] && [ -f application.yaml.tmp ]; then cp application.yaml.tmp resources/application.yaml; fi && " +
-                        "if [ ! -f resources/logback.xml ] && [ -f logback.xml.tmp ]; then cp logback.xml.tmp resources/logback.xml; fi"
+                        "if [ ! -f resources/logback.xml ] && [ -f logback.xml.tmp ]; then cp logback.xml.tmp resources/logback.xml; fi && " +
+                        "if [ ! -f ~/.config/systemd/user/$serviceName ] && [ -f taiga-mcp.service.tmp ]; then cp taiga-mcp.service.tmp ~/.config/systemd/user/$serviceName && systemctl --user enable $serviceName; fi"
                 executeSshCommand(session, resourcesCommand)
             }
 
@@ -106,7 +117,7 @@ abstract class ServerDeployTask : DefaultTask() {
             runStep(out, "Eliminando archivos y carpetas temporales") {
                 val deleteCommand = "extractedDir=\$(ls -d */ 2>/dev/null | grep -E '^server-' | head -n 1 | tr -d '/'); " +
                         "if [ -z \"\$extractedDir\" ]; then extractedDir=\$(basename \"$zipFileName\" .zip | tr '[:upper:]' '[:lower:]'); fi; " +
-                        "rm -f \"$zipFileName\" application.yaml.tmp logback.xml.tmp; " +
+                        "rm -f \"$zipFileName\" application.yaml.tmp logback.xml.tmp taiga-mcp.service.tmp; " +
                         "if [ -n \"\$extractedDir\" ] && [ -d \"\$extractedDir\" ]; then rm -rf \"\$extractedDir\"; fi"
                 executeSshCommand(session, deleteCommand)
             }

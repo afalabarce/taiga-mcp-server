@@ -1,0 +1,17 @@
+[Unit]
+Description=Taiga Model Context Protocol (MCP) Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+ExecStart=/usr/bin/java -Xms128m -Xmx512m -XX:+UseG1GC -jar %h/server-standalone.jar
+Restart=always
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=taiga-mcp
+
+[Install]
+WantedBy=default.target

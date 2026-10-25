@@ -146,4 +146,5 @@ tasks.register<ServerDeployTask>("deploy") {
     zipFile.set(tasks.named<Zip>("distZip").flatMap { it.archiveFile })
     applicationYamlFile.set(layout.projectDirectory.file("src/commonMain/resources/application.yaml"))
     logbackXmlFile.set(layout.projectDirectory.file("src/commonMain/resources/logback.xml"))
+    userServiceFile.set(rootProject.layout.projectDirectory.file("systemd/taiga-mcp-user.service"))
 }
