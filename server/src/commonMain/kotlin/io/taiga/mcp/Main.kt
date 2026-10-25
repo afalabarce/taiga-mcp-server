@@ -2,13 +2,13 @@ package io.taiga.mcp
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
-import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.taiga.mcp.config.ConfigManager
+import io.taiga.mcp.config.ServerOptsParser
 import io.taiga.mcp.config.TaigaConfig
 import io.taiga.mcp.config.getEnv
 import io.taiga.mcp.mcp.server.McpServer
@@ -24,15 +24,16 @@ class TaigaMcpCommand : CliktCommand(
 ) {
     override fun help(context: com.github.ajalt.clikt.core.Context): String =
         "Taiga Model Context Protocol (MCP) Server with remote API parameterization, SSE and Swagger UI"
-    private val host: String by option(
+
+    private val hostOption: String? by option(
         "--host", "-h",
         help = "Host interface to bind HTTP server (default: 0.0.0.0)"
-    ).default(getEnv("TAIGA_HOST") ?: getEnv("HOST") ?: "0.0.0.0")
+    )
 
-    private val port: Int by option(
+    private val portOption: Int? by option(
         "--port", "-p",
         help = "Port to listen on (default: 8080 or PORT env var)"
-    ).int().default(getEnv("TAIGA_PORT")?.toIntOrNull() ?: getEnv("PORT")?.toIntOrNull() ?: 8080)
+    ).int()
 
     private val stdio: Boolean by option(
         "--stdio",
@@ -55,12 +56,45 @@ class TaigaMcpCommand : CliktCommand(
     )
 
     override fun run() {
-        // Initialize config from environment + CLI arguments
-        val envConfig = ConfigManager.loadFromEnvironment()
-        val initialConfig = envConfig.copy(
-            apiUrl = taigaUrl?.ifBlank { null } ?: envConfig.apiUrl,
-            authToken = taigaToken?.ifBlank { null } ?: envConfig.authToken,
-            defaultProject = taigaProject?.ifBlank { null } ?: envConfig.defaultProject
+        // 1. Resolve configuration files via SERVER_OPTS, system properties, environment, and conventions
+        val resolvedConfig = ServerOptsParser.resolve()
+        val yaml = resolvedConfig.yamlProperties
+
+        // 2. Resolve Host & Port with priority: CLI option > direct env var > application.yaml > default
+        val host = hostOption
+            ?: getEnv("TAIGA_HOST")
+            ?: getEnv("HOST")
+            ?: yaml["server.host"]
+            ?: "0.0.0.0"
+
+        val port = portOption
+            ?: getEnv("TAIGA_PORT")?.toIntOrNull()
+            ?: getEnv("PORT")?.toIntOrNull()
+            ?: yaml["server.port"]?.toIntOrNull()
+            ?: 8080
+
+        // 3. Resolve Taiga configuration with priority: CLI option > direct env var > application.yaml > default
+        val resolvedApiUrl = taigaUrl?.ifBlank { null }
+            ?: getEnv("TAIGA_API_URL")
+            ?: yaml["taiga.apiUrl"]
+            ?: yaml["taiga.api_url"]
+            ?: "https://api.taiga.io"
+
+        val resolvedAuthToken = taigaToken?.ifBlank { null }
+            ?: getEnv("TAIGA_AUTH_TOKEN")
+            ?: yaml["taiga.authToken"]
+            ?: yaml["taiga.auth_token"]
+
+        val resolvedDefaultProject = taigaProject?.ifBlank { null }
+            ?: getEnv("TAIGA_DEFAULT_PROJECT")
+            ?: yaml["taiga.defaultProject"]
+            ?: yaml["taiga.default_project"]
+            ?: yaml["taiga.project"]
+
+        val initialConfig = TaigaConfig(
+            apiUrl = resolvedApiUrl,
+            authToken = resolvedAuthToken,
+            defaultProject = resolvedDefaultProject
         )
 
         val configManager = ConfigManager(initialConfig)
@@ -85,6 +119,10 @@ class TaigaMcpCommand : CliktCommand(
             println("  Taiga API URL:       ${initialConfig.apiUrl}")
             println("  Default Project:     ${initialConfig.defaultProject ?: "<not configured>"}")
             println("  Auth Token:          ${if (!initialConfig.authToken.isNullOrBlank()) "Configured (masked)" else "<none>"}")
+            println("-----------------------------------------------------------------")
+            println("  SERVER_OPTS:         ${resolvedConfig.serverOptsRaw ?: "<not set>"}")
+            println("  application.yaml:    ${resolvedConfig.applicationYamlPath ?: "<not found / default>"}")
+            println("  logback.xml:         ${resolvedConfig.logbackXmlPath ?: "<classpath default>"}")
             println("-----------------------------------------------------------------")
             println("  Server listening:    http://$host:$port")
             println("  Swagger UI:          http://$host:$port/swagger")

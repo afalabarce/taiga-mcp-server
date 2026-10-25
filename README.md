@@ -162,6 +162,26 @@ server/build/libs/server-standalone.jar
 ```
 *Este archivo incluye el servidor embebido CIO, todas las dependencias y recursos, listo para ejecutarse en cualquier entorno con JVM 17.*
 
+### Parametrización con `SERVER_OPTS` (`application.yaml` y `logback.xml`)
+
+El servidor admite la variable de entorno `SERVER_OPTS` para parametrizar dinámicamente la ubicación de los archivos de configuración y logging:
+
+```bash
+export SERVER_OPTS="-Dconfig.file=/srv/taiga-mcp/resources/application.yaml -Dlogback.configurationFile=/srv/taiga-mcp/resources/logback.xml"
+
+# Ejecución mediante el script de inicio (incluye SERVER_OPTS en el proceso Java)
+bin/server
+
+# O ejecución directa del JAR independiente (Main.kt detecta y procesa SERVER_OPTS automáticamente)
+java -jar server-standalone.jar
+```
+
+El servidor resolverá los archivos con la siguiente jerarquía de búsqueda:
+1. **Rutas pasadas en `SERVER_OPTS`** (mediante flags `-Dconfig.file=...`, `-Dlogback.configurationFile=...`, o argumentos `--config=...`, `--logback=...`).
+2. **Propiedades del sistema JVM** (`-Dconfig.file=...`, `-Dlogback.configurationFile=...`).
+3. **Variables de entorno específicas** (`CONFIG_FILE`, `LOGBACK_CONFIGURATION_FILE`).
+4. **Ubicaciones por defecto convencionales** (`resources/application.yaml`, `resources/logback.xml`).
+
 ---
 
 ## 🔒 Seguridad y Autenticación

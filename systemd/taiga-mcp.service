@@ -13,8 +13,9 @@ EnvironmentFile=-/etc/taiga-mcp/taiga-mcp.env
 Environment=HOST=127.0.0.1
 Environment=PORT=8080
 Environment=TAIGA_API_URL=https://api.taiga.io
+Environment="SERVER_OPTS=-Dconfig.file=/opt/taiga-mcp/resources/application.yaml -Dlogback.configurationFile=/opt/taiga-mcp/resources/logback.xml"
 
-ExecStart=/usr/bin/java -Xms128m -Xmx512m -XX:+UseG1GC -jar /opt/taiga-mcp/server-standalone.jar
+ExecStart=/opt/taiga-mcp/bin/server
 
 Restart=always
 RestartSec=5s

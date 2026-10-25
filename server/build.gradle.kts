@@ -93,7 +93,7 @@ val createStartScripts = tasks.register("createStartScripts") {
             #!/bin/sh
             DIRNAME="${'$'}(dirname "${'$'}0")"
             APP_HOME="${'$'}(cd "${'$'}DIRNAME/.." && pwd)"
-            exec java ${'$'}JAVA_OPTS -jar "${'$'}APP_HOME/lib/server-standalone.jar" "${'$'}@"
+            exec java ${'$'}JAVA_OPTS ${'$'}SERVER_OPTS -jar "${'$'}APP_HOME/lib/server-standalone.jar" "${'$'}@"
             """.trimIndent() + "\n"
         )
         shScript.setExecutable(true, false)
@@ -104,7 +104,7 @@ val createStartScripts = tasks.register("createStartScripts") {
             @echo off
             set DIRNAME=%~dp0
             set APP_HOME=%DIRNAME%..
-            java %JAVA_OPTS% -jar "%APP_HOME%\lib\server-standalone.jar" %*
+            java %JAVA_OPTS% %SERVER_OPTS% -jar "%APP_HOME%\lib\server-standalone.jar" %*
             """.trimIndent() + "\r\n"
         )
     }

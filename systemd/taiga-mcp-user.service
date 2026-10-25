@@ -5,7 +5,14 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=%h
-ExecStart=/usr/bin/java -Xms128m -Xmx512m -XX:+UseG1GC -jar %h/server-standalone.jar
+
+# Optional environment overrides
+EnvironmentFile=-%h/.env
+EnvironmentFile=-%h/taiga-mcp.env
+EnvironmentFile=-/etc/taiga-mcp/taiga-mcp.env
+Environment="SERVER_OPTS=-Dconfig.file=%h/resources/application.yaml -Dlogback.configurationFile=%h/resources/logback.xml"
+
+ExecStart=%h/bin/server
 Restart=always
 RestartSec=5s
 
