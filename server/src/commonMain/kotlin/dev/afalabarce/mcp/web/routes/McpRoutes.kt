@@ -8,8 +8,11 @@ import io.ktor.server.request.receive
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.RoutingCall
+import io.ktor.server.routing.get
 import io.ktor.server.routing.openapi.describe
 import io.ktor.server.routing.post
+import io.ktor.server.sse.ServerSSESession
 import io.ktor.server.sse.sse
 import io.ktor.sse.ServerSentEvent
 import io.ktor.utils.io.ExperimentalKtorApi
@@ -23,14 +26,16 @@ import kotlinx.coroutines.channels.ClosedReceiveChannelException
 /**
  * Protected MCP Routes: /sse, /messages, and /mcp.
  * Protected by authenticate("auth-bearer").
+ *
+ * Supports both legacy HTTP+SSE and modern Streamable HTTP transports seamlessly
+ * on both /sse and /mcp endpoints.
  */
 @OptIn(ExperimentalKtorApi::class)
 fun Route.mcpRoutes(
     mcpServer: McpServer,
     sessionManager: McpSessionManager
 ) {
-    // Standard MCP SSE Transport
-    sse("/sse") {
+    val sseHandler: suspend ServerSSESession.() -> Unit = {
         val session = sessionManager.createSession()
         try {
             send(
@@ -56,7 +61,10 @@ fun Route.mcpRoutes(
         } finally {
             sessionManager.removeSession(session.id)
         }
-    }.describe {
+    }
+
+    // Standard MCP SSE Transport on /sse
+    sse("/sse", sseHandler).describe {
         summary = "MCP Server-Sent Events Endpoint (Protected)"
         description = "Requires Bearer authentication. Initiates an SSE streaming connection for Model Context Protocol sessions."
         tag("MCP Protocol")
@@ -70,7 +78,37 @@ fun Route.mcpRoutes(
         }
     }
 
-    // Client posts JSON-RPC messages to this endpoint
+    // Modern Streamable HTTP fallback on /sse (prevents 405 Method Not Allowed when Streamable clients point to /sse)
+    post("/sse") {
+        handleDirectMcp(call, mcpServer)
+    }.describe {
+        summary = "MCP Streamable HTTP POST receiver on /sse (Protected)"
+        description = "Allows modern Streamable HTTP clients to send JSON-RPC requests directly to /sse without 405 error."
+        tag("MCP Protocol")
+        requestBody {
+            description = "JSON-RPC 2.0 request or batch"
+            required = true
+            ContentType.Application.Json {
+                schema = jsonSchema<JsonRpcRequest>()
+            }
+        }
+        responses {
+            HttpStatusCode.OK {
+                description = "JSON-RPC response payload"
+            }
+            HttpStatusCode.NoContent {
+                description = "Notification acknowledged"
+            }
+            HttpStatusCode.BadRequest {
+                description = "Parse error or invalid JSON-RPC"
+            }
+            HttpStatusCode.Unauthorized {
+                description = "Unauthorized - Missing or invalid Bearer token"
+            }
+        }
+    }
+
+    // Client posts JSON-RPC messages to this endpoint for active SSE sessions
     post("/messages") {
         val sessionId = call.request.queryParameters["sessionId"]
         if (sessionId.isNullOrBlank()) {
@@ -126,28 +164,30 @@ fun Route.mcpRoutes(
         }
     }
 
-    // Direct JSON-RPC over HTTP (POST /mcp)
-    post("/mcp") {
-        val bodyText = call.receiveText()
-        val request = try {
-            TaigaClient.json.decodeFromString<JsonRpcRequest>(bodyText)
-        } catch (e: Exception) {
-            call.respond(HttpStatusCode.BadRequest, "Invalid JSON-RPC request: ${e.message}")
-            return@post
+    // Unified SSE Transport on /mcp
+    sse("/mcp", sseHandler).describe {
+        summary = "MCP Server-Sent Events standby stream on /mcp (Protected)"
+        description = "Requires Bearer authentication. Initiates an SSE standby connection on /mcp for asynchronous pushes."
+        tag("MCP Protocol")
+        responses {
+            HttpStatusCode.OK {
+                description = "SSE event stream opened"
+            }
+            HttpStatusCode.Unauthorized {
+                description = "Unauthorized - Missing or invalid Bearer token"
+            }
         }
+    }
 
-        val response = mcpServer.handleRequest(request)
-        if (response != null) {
-            call.respond(response)
-        } else {
-            call.respond(HttpStatusCode.NoContent)
-        }
+    // Direct JSON-RPC over Streamable HTTP (POST /mcp)
+    post("/mcp") {
+        handleDirectMcp(call, mcpServer)
     }.describe {
-        summary = "Direct MCP JSON-RPC endpoint (Protected)"
-        description = "Requires Bearer authentication. Allows posting standard MCP JSON-RPC requests synchronously over HTTP without SSE."
+        summary = "Direct MCP Streamable HTTP JSON-RPC endpoint (Protected)"
+        description = "Requires Bearer authentication. Allows posting standard MCP JSON-RPC requests synchronously over HTTP with Streamable transport."
         tag("MCP Protocol")
         requestBody {
-            description = "JSON-RPC 2.0 request payload"
+            description = "JSON-RPC 2.0 request or batch payload"
             required = true
             ContentType.Application.Json {
                 schema = jsonSchema<JsonRpcRequest>()
@@ -166,6 +206,55 @@ fun Route.mcpRoutes(
             HttpStatusCode.Unauthorized {
                 description = "Unauthorized - Missing or invalid Bearer token"
             }
+        }
+    }
+}
+
+/**
+ * Handles direct synchronous JSON-RPC requests (single or batch) over Streamable HTTP.
+ */
+private suspend fun handleDirectMcp(call: RoutingCall, mcpServer: McpServer) {
+    val sessionId = call.request.headers["Mcp-Session-Id"]
+        ?: call.request.queryParameters["sessionId"]
+    if (!sessionId.isNullOrBlank()) {
+        call.response.headers.append("Mcp-Session-Id", sessionId)
+    }
+
+    val bodyText = call.receiveText().trim()
+    if (bodyText.isEmpty()) {
+        call.respond(HttpStatusCode.BadRequest, "Empty request body")
+        return
+    }
+
+    if (bodyText.startsWith("[")) {
+        // Batch JSON-RPC request
+        val requests = try {
+            TaigaClient.json.decodeFromString<List<JsonRpcRequest>>(bodyText)
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, "Invalid batch JSON-RPC request: ${e.message}")
+            return
+        }
+
+        val responses = requests.mapNotNull { mcpServer.handleRequest(it) }
+        if (responses.isNotEmpty()) {
+            call.respond(responses)
+        } else {
+            call.respond(HttpStatusCode.NoContent)
+        }
+    } else {
+        // Single JSON-RPC request
+        val request = try {
+            TaigaClient.json.decodeFromString<JsonRpcRequest>(bodyText)
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, "Invalid JSON-RPC request: ${e.message}")
+            return
+        }
+
+        val response = mcpServer.handleRequest(request)
+        if (response != null) {
+            call.respond(response)
+        } else {
+            call.respond(HttpStatusCode.NoContent)
         }
     }
 }

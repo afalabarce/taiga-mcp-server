@@ -385,12 +385,30 @@ The response will contain the `authToken` (Taiga JWT) to place in your `mcp.json
 
 ---
 
-### 🌐 Option 1: Remote SSE Connection (Recommended for Deployed Server)
+### 🌐 Option 1: Remote Connection (Streamable HTTP & SSE)
 
-Connects to your production Linux server over secure HTTPS / SSE.
+Connects to your production Linux server over secure HTTPS.
 
-#### Format A: Native SSE Configuration (Cursor, Windsurf, Antigravity)
-If your agentic IDE supports native remote SSE connections via URL:
+#### Format A: Streamable HTTP Transport (Recommended for Antigravity)
+Modern clients like **Antigravity** or **Gemini CLI** use the **Streamable HTTP transport** specification, sending direct HTTP `POST` requests to the `/mcp` endpoint:
+
+```json
+{
+  "mcpServers": {
+    "taiga": {
+      "url": "https://taiga-mcp.afalabarce.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_TAIGA_BEARER_TOKEN",
+        "X-Taiga-Url": "https://taiga.afalabarce.dev",
+        "X-Taiga-Project": "oposita2"
+      }
+    }
+  }
+}
+```
+
+#### Format B: Traditional Server-Sent Events (Cursor, Windsurf, Continue)
+If your agentic IDE uses classic SSE transport via `EventSource`:
 
 ```json
 {
@@ -399,16 +417,19 @@ If your agentic IDE supports native remote SSE connections via URL:
       "url": "https://taiga-mcp.afalabarce.dev/sse?token=YOUR_TAIGA_BEARER_TOKEN",
       "headers": {
         "Authorization": "Bearer YOUR_TAIGA_BEARER_TOKEN",
-        "X-Taiga-Project": "my-project-slug"
+        "X-Taiga-Url": "https://taiga.afalabarce.dev",
+        "X-Taiga-Project": "oposita2"
       }
     }
   }
 }
 ```
 
+> **💡 Hybrid Compatibility**: The server natively supports both Streamable HTTP and SSE on both `/mcp` and `/sse` endpoints, preventing `405 Method Not Allowed` errors regardless of which endpoint or client format you configure.
+>
 > **💡 Note on SSE Authentication**: Some MCP clients do not transmit custom HTTP headers when opening the `EventSource` connection. The server accepts the token in both the `Authorization: Bearer <token>` header and the `?token=<token>` query parameter. Providing both ensures maximum client compatibility.
 
-#### Format B: Via `mcp-remote` Proxy (Claude Desktop & Stdio-to-SSE Clients)
+#### Format C: Via `mcp-remote` Proxy (Claude Desktop & Stdio-to-SSE Clients)
 For desktop clients that require a local process to bridge to a remote SSE server:
 
 ```json

@@ -384,12 +384,30 @@ La respuesta te entregará el `authToken` (JWT de Taiga) para usarlo en tu `mcp.
 
 ---
 
-### 🌐 Opción 1: Conexión Remota SSE (Recomendada para Servidor Desplegado)
+### 🌐 Opción 1: Conexión Remota (Streamable HTTP & SSE)
 
-Esta modalidad se conecta a tu servidor Linux en producción a través del túnel seguro HTTPS / SSE.
+Esta modalidad se conecta a tu servidor Linux en producción a través del túnel seguro HTTPS.
 
-#### Formato A: Configuración SSE Nativa (Cursor, Windsurf, Antigravity)
-Si tu IDE agéntico admite conexiones SSE remotas directamente a través de una URL:
+#### Formato A: Streamable HTTP Transport (Recomendado para Antigravity)
+Los clientes modernos como **Antigravity** o **Gemini CLI** utilizan la especificación **Streamable HTTP transport**, comunicándose mediante peticiones HTTP `POST` directas al endpoint `/mcp`:
+
+```json
+{
+  "mcpServers": {
+    "taiga": {
+      "url": "https://taiga-mcp.afalabarce.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer TU_TOKEN_BEARER_TAIGA",
+        "X-Taiga-Url": "https://taiga.afalabarce.dev",
+        "X-Taiga-Project": "oposita2"
+      }
+    }
+  }
+}
+```
+
+#### Formato B: Server-Sent Events tradicional (Cursor, Windsurf, Continue)
+Si tu IDE agéntico utiliza el transporte SSE clásico por `EventSource`:
 
 ```json
 {
@@ -398,16 +416,19 @@ Si tu IDE agéntico admite conexiones SSE remotas directamente a través de una 
       "url": "https://taiga-mcp.afalabarce.dev/sse?token=TU_TOKEN_BEARER_TAIGA",
       "headers": {
         "Authorization": "Bearer TU_TOKEN_BEARER_TAIGA",
-        "X-Taiga-Project": "mi-proyecto-slug"
+        "X-Taiga-Url": "https://taiga.afalabarce.dev",
+        "X-Taiga-Project": "oposita2"
       }
     }
   }
 }
 ```
 
+> **💡 Compatibilidad Híbrida**: El servidor soporta tanto Streamable HTTP como SSE en ambos endpoints (`/mcp` y `/sse`), evitando errores `405 Method Not Allowed` independientemente del tipo de cliente utilizado.
+>
 > **💡 Nota sobre Autenticación en SSE**: Algunos clientes MCP no transmiten cabeceras HTTP personalizadas al abrir el canal `EventSource`. Por esta razón, el servidor acepta el token tanto en la cabecera `Authorization: Bearer <token>` como en el parámetro query `?token=<token>`. Se recomienda incluir ambos para máxima compatibilidad.
 
-#### Formato B: Mediante Proxy `mcp-remote` (Claude Desktop y Clientes Stdio-to-SSE)
+#### Formato C: Mediante Proxy `mcp-remote` (Claude Desktop y Clientes Stdio-to-SSE)
 Para clientes como Claude Desktop que requieren un proceso local para conectarse a un SSE remoto:
 
 ```json

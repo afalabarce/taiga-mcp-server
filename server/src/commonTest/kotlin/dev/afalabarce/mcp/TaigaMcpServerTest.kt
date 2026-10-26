@@ -414,4 +414,57 @@ class TaigaMcpServerTest {
         assertNotNull(response.error)
         assertEquals(-32601, response.error!!.code)
     }
+
+    @Test
+    fun testStreamableHttpPostOnSseAndMcp() = io.ktor.server.testing.testApplication {
+        val configManager = ConfigManager(TaigaConfig(authToken = "test_valid_token"))
+        val clientFactory = TaigaClientFactory(configManager)
+        val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
+        val mcpServer = McpServer(toolRegistry, configManager)
+        val sessionManager = dev.afalabarce.mcp.mcp.server.McpSessionManager(mcpServer)
+
+        application {
+            configureServer(
+                configManager = configManager,
+                mcpServer = mcpServer,
+                sessionManager = sessionManager,
+                toolRegistry = toolRegistry,
+                clientFactory = clientFactory
+            )
+        }
+
+        val initPayload = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}"""
+
+        // Test POST /mcp with Bearer token
+        val mcpResp = client.post("/mcp") {
+            header(HttpHeaders.Authorization, "Bearer test_valid_token")
+            header(HttpHeaders.ContentType, "application/json")
+            header("Mcp-Session-Id", "session-xyz")
+            setBody(initPayload)
+        }
+        assertEquals(HttpStatusCode.OK, mcpResp.status)
+        assertEquals("session-xyz", mcpResp.headers["Mcp-Session-Id"])
+        assertTrue(mcpResp.bodyAsText().contains("taiga-mcpserver"))
+
+        // Test POST /sse (Streamable HTTP fallback - ensures no 405 Method Not Allowed)
+        val sseResp = client.post("/sse") {
+            header(HttpHeaders.Authorization, "Bearer test_valid_token")
+            header(HttpHeaders.ContentType, "application/json")
+            setBody(initPayload)
+        }
+        assertEquals(HttpStatusCode.OK, sseResp.status)
+        assertTrue(sseResp.bodyAsText().contains("taiga-mcpserver"))
+
+        // Test Batch JSON-RPC over POST /mcp
+        val batchPayload = """[{"jsonrpc":"2.0","id":2,"method":"ping"},{"jsonrpc":"2.0","id":3,"method":"tools/list"}]"""
+        val batchResp = client.post("/mcp") {
+            header(HttpHeaders.Authorization, "Bearer test_valid_token")
+            header(HttpHeaders.ContentType, "application/json")
+            setBody(batchPayload)
+        }
+        assertEquals(HttpStatusCode.OK, batchResp.status)
+        val batchBody = batchResp.bodyAsText()
+        assertTrue(batchBody.startsWith("["))
+        assertTrue(batchBody.contains("taiga_list_projects"))
+    }
 }
