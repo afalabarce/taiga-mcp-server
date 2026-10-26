@@ -8,3 +8,5 @@ server/build/
 out/
 .DS_Store
 *.log
+.agents/
+
