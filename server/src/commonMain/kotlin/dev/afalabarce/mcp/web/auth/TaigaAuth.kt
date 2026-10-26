@@ -26,13 +26,18 @@ data class TaigaUserPrincipal(
 )
 
 /**
- * Decodes a Base64-encoded "username:password" string.
+ * Decodes a Base64-encoded "username:password" string with tolerant padding support.
  */
 @OptIn(ExperimentalEncodingApi::class)
 fun decodeBasicCredentials(base64Text: String): Pair<String, String>? {
     return try {
         val clean = base64Text.trim()
-        val decoded = Base64.decode(clean).decodeToString()
+        val padded = when (clean.length % 4) {
+            2 -> "$clean=="
+            3 -> "$clean="
+            else -> clean
+        }
+        val decoded = Base64.decode(padded).decodeToString()
         val separatorIndex = decoded.indexOf(':')
         if (separatorIndex >= 0) {
             val username = decoded.substring(0, separatorIndex)
@@ -54,14 +59,21 @@ fun Application.configureAuthentication(
     basicAuthManager: TaigaBasicAuthManager
 ) {
     install(Authentication) {
-        // 1. Bearer Token Provider ("auth-bearer")
+        // 1. Bearer & Flexible Basic Provider ("auth-bearer")
         bearer("auth-bearer") {
             realm = "Taiga MCP Server"
             authHeader { call ->
                 val authHeader = call.request.headers[HttpHeaders.Authorization]
-                if (authHeader != null && authHeader.startsWith("Bearer ", ignoreCase = true)) {
-                    parseAuthorizationHeader(authHeader)
-                } else if (authHeader == null) {
+                if (authHeader != null) {
+                    if (authHeader.startsWith("Bearer ", ignoreCase = true)) {
+                        parseAuthorizationHeader(authHeader)
+                    } else if (authHeader.startsWith("Basic ", ignoreCase = true)) {
+                        val b64 = authHeader.substringAfter("Basic ").trim()
+                        HttpAuthHeader.Single("Bearer", "b64_$b64")
+                    } else {
+                        null
+                    }
+                } else {
                     val basicParam = call.request.headers["X-Taiga-Basic"]
                         ?: call.request.queryParameters["basic"]
                     if (basicParam != null) {
@@ -71,15 +83,13 @@ fun Application.configureAuthentication(
                             ?: call.request.queryParameters["token"]
                         token?.let { HttpAuthHeader.Single("Bearer", it) }
                     }
-                } else {
-                    null
                 }
             }
             authenticate { credential ->
                 val rawToken = credential.token.trim()
                 if (rawToken.isBlank()) return@authenticate null
 
-                // Handle X-Taiga-Basic or ?basic= passed as synthetic bearer
+                // Handle Basic Auth (Authorization: Basic, X-Taiga-Basic, or ?basic=)
                 if (rawToken.startsWith("b64_")) {
                     val b64 = rawToken.removePrefix("b64_")
                     val creds = decodeBasicCredentials(b64) ?: return@authenticate null
@@ -118,7 +128,7 @@ fun Application.configureAuthentication(
             }
         }
 
-        // 2. HTTP Basic Provider ("auth-basic")
+        // 2. Standard HTTP Basic Provider ("auth-basic")
         basic("auth-basic") {
             realm = "Taiga MCP Server"
             validate { credentials ->
