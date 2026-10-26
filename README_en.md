@@ -198,19 +198,38 @@ The server implements a secure-by-default model using **Ktor Authentication**:
 | `/` | `GET` | **Public** | Service endpoint discovery. |
 | `/swagger` | `GET` | **Public** | Interactive Swagger UI web console. |
 | `/openapi.json` | `GET` | **Public** | Runtime OpenAPI 3.0 specification. |
-| `/sse` | `GET` | **Protected** (`auth-bearer`) | MCP Server-Sent Events channel. |
-| `/messages` | `POST` | **Protected** (`auth-bearer`) | Sends JSON-RPC messages for SSE sessions. |
-| `/mcp` | `POST` | **Protected** (`auth-bearer`) | Direct HTTP MCP protocol endpoint. |
-| `/api/config` | `GET`, `POST`| **Protected** (`auth-bearer`) | Read and hot-update runtime configuration. |
-| `/api/mcp/tools` | `GET` | **Protected** (`auth-bearer`) | List available tools in JSON format. |
-| `/api/mcp/tools/{tool}/call` | `POST` | **Protected** (`auth-bearer`) | Execute tools from Swagger / API. |
-| `/api/taiga/*` | `GET`, `POST`| **Protected** (`auth-bearer`) | Direct Taiga REST proxy testing endpoints. |
+| `/sse` | `GET`, `POST` | **Protected** (`Bearer` / `Basic`) | MCP Server-Sent Events / Streamable HTTP streaming channel. |
+| `/messages` | `POST` | **Protected** (`Bearer` / `Basic`) | Sends JSON-RPC messages for SSE sessions. |
+| `/mcp` | `GET`, `POST` | **Protected** (`Bearer` / `Basic`) | Direct Streamable HTTP JSON-RPC endpoint and standby SSE stream. |
+| `/api/config` | `GET`, `POST`| **Protected** (`Bearer` / `Basic`) | Read and hot-update runtime configuration. |
+| `/api/mcp/tools` | `GET` | **Protected** (`Bearer` / `Basic`) | List available tools in JSON format. |
+| `/api/mcp/tools/{tool}/call` | `POST` | **Protected** (`Bearer` / `Basic`) | Execute tools from Swagger / API. |
+| `/api/taiga/*` | `GET`, `POST`| **Protected** (`Bearer` / `Basic`) | Direct Taiga REST proxy testing endpoints. |
 
 ### How to Authenticate Protected Requests
 
-Clients can send the token using any of the following options:
+The server supports **two authentication mechanisms** to accommodate any client and avoid token expirations:
 
-1. **Standard HTTP Header (Recommended):**
+#### Method 1: HTTP Basic Authentication with Username and Password (Recommended against Token Expiration)
+Ideal for **Antigravity**, **Cursor**, or long-lived assistant configurations, as it **permanently eliminates JWT expiration headaches**. The MCP server automatically authenticates against Taiga and caches/renews the active session token:
+
+1. **Encode your credentials in Base64:**
+   ```bash
+   echo -n "your_username:your_password" | base64
+   # Example output: eW91cl91c2VybmFtZTp5b3VyX3Bhc3N3b3Jk
+   ```
+2. **Send the standard HTTP Basic header:**
+   ```http
+   Authorization: Basic eW91cl91c2VybmFtZTp5b3VyX3Bhc3N3b3Jk
+   ```
+3. **Alternative Basic Auth Options:**
+   - Header: `X-Taiga-Basic: eW91cl91c2VybmFtZTp5b3VyX3Bhc3N3b3Jk`
+   - URL Query Parameter (for SSE / EventSource): `GET /sse?basic=eW91cl91c2VybmFtZTp5b3VyX3Bhc3N3b3Jk` or `/mcp?basic=...`
+
+#### Method 2: Bearer Authentication with JWT Token
+If you already possess a previously generated Taiga JWT token:
+
+1. **Standard HTTP Header:**
    ```http
    Authorization: Bearer your_taiga_token_here
    ```
@@ -218,7 +237,7 @@ Clients can send the token using any of the following options:
    ```http
    X-Taiga-Token: your_taiga_token_here
    ```
-3. **URL Query Parameter (for SSE clients lacking custom header support):**
+3. **URL Query Parameter:**
    ```
    GET /sse?token=your_taiga_token_here
    ```
@@ -389,8 +408,27 @@ The response will contain the `authToken` (Taiga JWT) to place in your `mcp.json
 
 Connects to your production Linux server over secure HTTPS.
 
-#### Format A: Streamable HTTP Transport (Recommended for Antigravity)
-Modern clients like **Antigravity** or **Gemini CLI** use the **Streamable HTTP transport** specification, sending direct HTTP `POST` requests to the `/mcp` endpoint:
+#### Format A: Streamable HTTP Transport with Basic Auth (Recommended for Antigravity)
+Modern clients like **Antigravity** or **Gemini CLI** use the **Streamable HTTP transport** specification, sending direct HTTP `POST` requests to the `/mcp` endpoint. Using **Basic Auth** (`base64(username:password)`) prevents frequent token expiration issues:
+
+```json
+{
+  "mcpServers": {
+    "taiga": {
+      "url": "https://taiga-mcp.afalabarce.dev/mcp",
+      "headers": {
+        "Authorization": "Basic eW91cl91c2VybmFtZTp5b3VyX3Bhc3N3b3Jk",
+        "X-Taiga-Url": "https://taiga.afalabarce.dev",
+        "X-Taiga-Project": "oposita2"
+      }
+    }
+  }
+}
+```
+*(To encode credentials in base64: `echo -n "your_username:your_password" | base64`)*
+
+#### Format B: Streamable HTTP Transport with Bearer Token
+If you prefer using a pre-generated Taiga JWT token:
 
 ```json
 {
@@ -407,16 +445,16 @@ Modern clients like **Antigravity** or **Gemini CLI** use the **Streamable HTTP 
 }
 ```
 
-#### Format B: Traditional Server-Sent Events (Cursor, Windsurf, Continue)
+#### Format C: Traditional Server-Sent Events (Cursor, Windsurf, Continue)
 If your agentic IDE uses classic SSE transport via `EventSource`:
 
 ```json
 {
   "mcpServers": {
     "taiga": {
-      "url": "https://taiga-mcp.afalabarce.dev/sse?token=YOUR_TAIGA_BEARER_TOKEN",
+      "url": "https://taiga-mcp.afalabarce.dev/sse",
       "headers": {
-        "Authorization": "Bearer YOUR_TAIGA_BEARER_TOKEN",
+        "Authorization": "Basic eW91cl91c2VybmFtZTp5b3VyX3Bhc3N3b3Jk",
         "X-Taiga-Url": "https://taiga.afalabarce.dev",
         "X-Taiga-Project": "oposita2"
       }
@@ -425,11 +463,11 @@ If your agentic IDE uses classic SSE transport via `EventSource`:
 }
 ```
 
-> **💡 Hybrid Compatibility**: The server natively supports both Streamable HTTP and SSE on both `/mcp` and `/sse` endpoints, preventing `405 Method Not Allowed` errors regardless of which endpoint or client format you configure.
+> **💡 Hybrid Compatibility**: The server natively supports both Basic Auth and Bearer Token, and both Streamable HTTP and SSE on both `/mcp` and `/sse` endpoints, preventing `405 Method Not Allowed` errors regardless of which endpoint or client format you configure.
 >
-> **💡 Note on SSE Authentication**: Some MCP clients do not transmit custom HTTP headers when opening the `EventSource` connection. The server accepts the token in both the `Authorization: Bearer <token>` header and the `?token=<token>` query parameter. Providing both ensures maximum client compatibility.
+> **💡 Note on SSE Authentication**: Some MCP clients do not transmit custom HTTP headers when opening the `EventSource` connection. The server accepts both `?basic=<base64>` and `?token=<jwt>` as URL query parameters.
 
-#### Format C: Via `mcp-remote` Proxy (Claude Desktop & Stdio-to-SSE Clients)
+#### Format D: Via `mcp-remote` Proxy (Claude Desktop & Stdio-to-SSE Clients)
 For desktop clients that require a local process to bridge to a remote SSE server:
 
 ```json

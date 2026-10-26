@@ -22,6 +22,7 @@ import dev.afalabarce.mcp.mcp.tools.TaigaToolRegistry
 import dev.afalabarce.mcp.taiga.client.TaigaApiException
 import dev.afalabarce.mcp.taiga.client.TaigaClient
 import dev.afalabarce.mcp.taiga.client.TaigaClientFactory
+import dev.afalabarce.mcp.web.auth.TaigaBasicAuthManager
 import dev.afalabarce.mcp.web.auth.configureAuthentication
 import dev.afalabarce.mcp.web.routes.configRoutes
 import dev.afalabarce.mcp.web.routes.healthRoutes
@@ -35,7 +36,8 @@ fun Application.configureServer(
     mcpServer: McpServer,
     sessionManager: McpSessionManager,
     toolRegistry: TaigaToolRegistry,
-    clientFactory: TaigaClientFactory
+    clientFactory: TaigaClientFactory,
+    basicAuthManager: TaigaBasicAuthManager = TaigaBasicAuthManager(configManager, clientFactory)
 ) {
     install(DefaultHeaders) {
         header("X-Engine", "Ktor")
@@ -49,6 +51,7 @@ fun Application.configureServer(
         allowHeader(HttpHeaders.Authorization)
         allowHeader("X-Taiga-Url")
         allowHeader("X-Taiga-Token")
+        allowHeader("X-Taiga-Basic")
         allowHeader("X-Taiga-Project")
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Put)
@@ -62,8 +65,8 @@ fun Application.configureServer(
 
     install(SSE)
 
-    // Install Bearer Token Authentication
-    configureAuthentication(configManager)
+    // Install Bearer Token & HTTP Basic Authentication
+    configureAuthentication(configManager, basicAuthManager)
 
     install(StatusPages) {
         exception<TaigaApiException> { call, cause ->
@@ -87,8 +90,8 @@ fun Application.configureServer(
         loginRoutes(configManager, clientFactory)
         swaggerDocsRoutes()
 
-        // --- 2. Protected Routes (Protected with authenticate("auth-bearer")) ---
-        authenticate("auth-bearer") {
+        // --- 2. Protected Routes (Protected with authenticate("auth-bearer", "auth-basic")) ---
+        authenticate("auth-bearer", "auth-basic") {
             configRoutes(configManager)
             mcpRoutes(mcpServer, sessionManager)
             mcpToolAndTaigaRoutes(toolRegistry, clientFactory)

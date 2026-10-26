@@ -10,7 +10,10 @@ import kotlin.random.Random
 
 data class McpSession(
     val id: String,
-    val channel: Channel<String> = Channel(Channel.BUFFERED)
+    val channel: Channel<String> = Channel(Channel.BUFFERED),
+    val authToken: String? = null,
+    val apiUrl: String? = null,
+    val project: String? = null
 )
 
 class McpSessionManager(
@@ -25,9 +28,18 @@ class McpSessionManager(
         return "sess_$randomString"
     }
 
-    suspend fun createSession(): McpSession = mutex.withLock {
+    suspend fun createSession(
+        authToken: String? = null,
+        apiUrl: String? = null,
+        project: String? = null
+    ): McpSession = mutex.withLock {
         val id = generateSessionId()
-        val session = McpSession(id)
+        val session = McpSession(
+            id = id,
+            authToken = authToken,
+            apiUrl = apiUrl,
+            project = project
+        )
         sessions[id] = session
         session
     }
@@ -43,7 +55,12 @@ class McpSessionManager(
 
     suspend fun handleIncomingMessage(sessionId: String, request: JsonRpcRequest): Boolean {
         val session = getSession(sessionId) ?: return false
-        val response = mcpServer.handleRequest(request) ?: return true // notification, no response required
+        val response = mcpServer.handleRequest(
+            request = request,
+            contextAuthToken = session.authToken,
+            contextApiUrl = session.apiUrl,
+            contextProject = session.project
+        ) ?: return true // notification, no response required
         val responseText = TaigaClient.json.encodeToString(response)
         session.channel.send(responseText)
         return true

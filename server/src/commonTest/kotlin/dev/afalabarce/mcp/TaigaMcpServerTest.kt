@@ -467,4 +467,106 @@ class TaigaMcpServerTest {
         assertTrue(batchBody.startsWith("["))
         assertTrue(batchBody.contains("taiga_list_projects"))
     }
+
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    @Test
+    fun testDecodeBasicCredentials() {
+        val encoded = kotlin.io.encoding.Base64.encode("usuario:password".encodeToByteArray())
+        val decoded = dev.afalabarce.mcp.web.auth.decodeBasicCredentials(encoded)
+        assertNotNull(decoded)
+        assertEquals("usuario", decoded.first)
+        assertEquals("password", decoded.second)
+
+        // Password with colons
+        val encodedWithColon = kotlin.io.encoding.Base64.encode("admin@taiga:p:a:s:s:1".encodeToByteArray())
+        val decodedWithColon = dev.afalabarce.mcp.web.auth.decodeBasicCredentials(encodedWithColon)
+        assertNotNull(decodedWithColon)
+        assertEquals("admin@taiga", decodedWithColon.first)
+        assertEquals("p:a:s:s:1", decodedWithColon.second)
+
+        // Invalid format (no colon)
+        val noColon = kotlin.io.encoding.Base64.encode("justusername".encodeToByteArray())
+        assertNull(dev.afalabarce.mcp.web.auth.decodeBasicCredentials(noColon))
+
+        // Non-base64 input
+        assertNull(dev.afalabarce.mcp.web.auth.decodeBasicCredentials("not-valid-base64%%%"))
+    }
+
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    @Test
+    fun testHttpBasicAuthenticationFlow() = io.ktor.server.testing.testApplication {
+        val configManager = ConfigManager(TaigaConfig())
+        val clientFactory = TaigaClientFactory(configManager)
+        val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
+        val mcpServer = McpServer(toolRegistry, configManager)
+        val sessionManager = dev.afalabarce.mcp.mcp.server.McpSessionManager(mcpServer)
+
+        var loginCalls = 0
+        val mockBasicAuthManager = object : dev.afalabarce.mcp.web.auth.TaigaBasicAuthManager(configManager, clientFactory) {
+            override suspend fun performLogin(username: String, password: String, targetApiUrl: String): String {
+                loginCalls++
+                if (username == "taiga_user" && password == "valid_pass") {
+                    return "resolved_jwt_token_456"
+                } else {
+                    throw dev.afalabarce.mcp.taiga.client.TaigaApiException(401, "Invalid credentials")
+                }
+            }
+        }
+
+        application {
+            configureServer(
+                configManager = configManager,
+                mcpServer = mcpServer,
+                sessionManager = sessionManager,
+                toolRegistry = toolRegistry,
+                clientFactory = clientFactory,
+                basicAuthManager = mockBasicAuthManager
+            )
+        }
+
+        val pingPayload = """{"jsonrpc":"2.0","id":1,"method":"ping"}"""
+        val validBase64 = kotlin.io.encoding.Base64.encode("taiga_user:valid_pass".encodeToByteArray())
+        val invalidBase64 = kotlin.io.encoding.Base64.encode("taiga_user:wrong_pass".encodeToByteArray())
+
+        // 1. Valid Basic Auth in Authorization header
+        val validResp = client.post("/mcp") {
+            header(HttpHeaders.Authorization, "Basic $validBase64")
+            header(HttpHeaders.ContentType, "application/json")
+            setBody(pingPayload)
+        }
+        assertEquals(HttpStatusCode.OK, validResp.status)
+        assertEquals(1, loginCalls)
+
+        // 2. Second call with same credentials should hit cache (no new login call)
+        val cachedResp = client.post("/mcp") {
+            header(HttpHeaders.Authorization, "Basic $validBase64")
+            header(HttpHeaders.ContentType, "application/json")
+            setBody(pingPayload)
+        }
+        assertEquals(HttpStatusCode.OK, cachedResp.status)
+        assertEquals(1, loginCalls) // unchanged!
+
+        // 3. Invalid credentials in Authorization header should return 401
+        val invalidResp = client.post("/mcp") {
+            header(HttpHeaders.Authorization, "Basic $invalidBase64")
+            header(HttpHeaders.ContentType, "application/json")
+            setBody(pingPayload)
+        }
+        assertEquals(HttpStatusCode.Unauthorized, invalidResp.status)
+
+        // 4. Basic Auth via X-Taiga-Basic header
+        val headerResp = client.post("/mcp") {
+            header("X-Taiga-Basic", validBase64)
+            header(HttpHeaders.ContentType, "application/json")
+            setBody(pingPayload)
+        }
+        assertEquals(HttpStatusCode.OK, headerResp.status)
+
+        // 5. Basic Auth via query parameter ?basic=
+        val queryResp = client.post("/mcp?basic=$validBase64") {
+            header(HttpHeaders.ContentType, "application/json")
+            setBody(pingPayload)
+        }
+        assertEquals(HttpStatusCode.OK, queryResp.status)
+    }
 }

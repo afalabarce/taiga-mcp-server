@@ -36,7 +36,16 @@ fun Route.mcpRoutes(
     sessionManager: McpSessionManager
 ) {
     val sseHandler: suspend ServerSSESession.() -> Unit = {
-        val session = sessionManager.createSession()
+        val principal = call.principal<TaigaUserPrincipal>()
+        val contextAuthToken = principal?.token
+        val contextApiUrl = call.request.headers["X-Taiga-Url"] ?: call.request.queryParameters["taiga_url"]
+        val contextProject = call.request.headers["X-Taiga-Project"] ?: call.request.queryParameters["taiga_project"]
+
+        val session = sessionManager.createSession(
+            authToken = contextAuthToken,
+            apiUrl = contextApiUrl,
+            project = contextProject
+        )
         try {
             send(
                 ServerSentEvent(
@@ -214,6 +223,11 @@ fun Route.mcpRoutes(
  * Handles direct synchronous JSON-RPC requests (single or batch) over Streamable HTTP.
  */
 private suspend fun handleDirectMcp(call: RoutingCall, mcpServer: McpServer) {
+    val principal = call.principal<TaigaUserPrincipal>()
+    val contextAuthToken = principal?.token
+    val contextApiUrl = call.request.headers["X-Taiga-Url"] ?: call.request.queryParameters["taiga_url"]
+    val contextProject = call.request.headers["X-Taiga-Project"] ?: call.request.queryParameters["taiga_project"]
+
     val sessionId = call.request.headers["Mcp-Session-Id"]
         ?: call.request.queryParameters["sessionId"]
     if (!sessionId.isNullOrBlank()) {
@@ -235,7 +249,9 @@ private suspend fun handleDirectMcp(call: RoutingCall, mcpServer: McpServer) {
             return
         }
 
-        val responses = requests.mapNotNull { mcpServer.handleRequest(it) }
+        val responses = requests.mapNotNull {
+            mcpServer.handleRequest(it, contextAuthToken, contextApiUrl, contextProject)
+        }
         if (responses.isNotEmpty()) {
             call.respond(responses)
         } else {
@@ -250,7 +266,7 @@ private suspend fun handleDirectMcp(call: RoutingCall, mcpServer: McpServer) {
             return
         }
 
-        val response = mcpServer.handleRequest(request)
+        val response = mcpServer.handleRequest(request, contextAuthToken, contextApiUrl, contextProject)
         if (response != null) {
             call.respond(response)
         } else {

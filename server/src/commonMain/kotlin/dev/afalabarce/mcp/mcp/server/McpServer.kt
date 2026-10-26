@@ -35,7 +35,12 @@ class McpServer(
         const val PROTOCOL_VERSION = "2024-11-05"
     }
 
-    suspend fun handleRequest(request: JsonRpcRequest): JsonRpcResponse? {
+    suspend fun handleRequest(
+        request: JsonRpcRequest,
+        contextAuthToken: String? = null,
+        contextApiUrl: String? = null,
+        contextProject: String? = null
+    ): JsonRpcResponse? {
         // Notification (id is null)
         if (request.id == null && request.method == "notifications/initialized") {
             return null
@@ -46,7 +51,7 @@ class McpServer(
                 "initialize" -> handleInitialize(request)
                 "ping" -> JsonRpcResponse(id = request.id, result = buildJsonObject {})
                 "tools/list" -> handleToolsList(request)
-                "tools/call" -> handleToolsCall(request)
+                "tools/call" -> handleToolsCall(request, contextAuthToken, contextApiUrl, contextProject)
                 "resources/list" -> handleResourcesList(request)
                 "resources/read" -> handleResourcesRead(request)
                 "prompts/list" -> handlePromptsList(request)
@@ -98,7 +103,12 @@ class McpServer(
         )
     }
 
-    private suspend fun handleToolsCall(request: JsonRpcRequest): JsonRpcResponse {
+    private suspend fun handleToolsCall(
+        request: JsonRpcRequest,
+        contextAuthToken: String? = null,
+        contextApiUrl: String? = null,
+        contextProject: String? = null
+    ): JsonRpcResponse {
         val params = request.params ?: return JsonRpcResponse(
             id = request.id,
             error = JsonRpcError(code = JsonRpcError.INVALID_PARAMS, message = "Missing params for tools/call")
@@ -110,7 +120,13 @@ class McpServer(
         )
 
         val arguments = params["arguments"] as? JsonObject ?: buildJsonObject {}
-        val callResult = toolRegistry.executeTool(toolName, arguments)
+        val callResult = toolRegistry.executeTool(
+            name = toolName,
+            arguments = arguments,
+            defaultAuthToken = contextAuthToken,
+            defaultApiUrl = contextApiUrl,
+            defaultProject = contextProject
+        )
 
         return JsonRpcResponse(
             id = request.id,

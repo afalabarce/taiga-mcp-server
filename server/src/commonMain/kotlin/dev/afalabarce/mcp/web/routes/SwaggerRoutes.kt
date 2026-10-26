@@ -109,7 +109,12 @@ fun Route.mcpToolAndTaigaRoutes(
             buildJsonObject {}
         }
 
-        val result = toolRegistry.executeTool(toolName, args)
+        val userToken = call.principal<TaigaUserPrincipal>()?.token
+        val result = toolRegistry.executeTool(
+            name = toolName,
+            arguments = args,
+            defaultAuthToken = userToken
+        )
         if (result.isError) {
             call.respond(HttpStatusCode.BadRequest, result)
         } else {

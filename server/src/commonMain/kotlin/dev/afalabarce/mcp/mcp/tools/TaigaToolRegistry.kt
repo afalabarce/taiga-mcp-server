@@ -55,15 +55,21 @@ class TaigaToolRegistry(
 
     fun getTool(name: String): McpTool? = tools[name]
 
-    suspend fun executeTool(name: String, arguments: JsonObject): McpCallToolResult {
+    suspend fun executeTool(
+        name: String,
+        arguments: JsonObject,
+        defaultAuthToken: String? = null,
+        defaultApiUrl: String? = null,
+        defaultProject: String? = null
+    ): McpCallToolResult {
         val tool = tools[name] ?: return McpCallToolResult(
             content = listOf(McpContent(text = "Error: Tool '$name' not found")),
             isError = true
         )
 
-        val overrideApiUrl = arguments["api_url"]?.jsonPrimitive?.contentOrNull
-        val overrideToken = arguments["auth_token"]?.jsonPrimitive?.contentOrNull
-        val overrideProject = arguments["project"]?.jsonPrimitive?.contentOrNull
+        val overrideApiUrl = arguments["api_url"]?.jsonPrimitive?.contentOrNull ?: defaultApiUrl
+        val overrideToken = arguments["auth_token"]?.jsonPrimitive?.contentOrNull ?: defaultAuthToken
+        val overrideProject = arguments["project"]?.jsonPrimitive?.contentOrNull ?: defaultProject
 
         return try {
             val client = clientFactory.getClient(
