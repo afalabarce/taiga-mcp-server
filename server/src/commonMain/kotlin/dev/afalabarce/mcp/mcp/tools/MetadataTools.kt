@@ -11,7 +11,7 @@ import kotlinx.serialization.json.jsonPrimitive
 object GetProjectStatusesTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_get_project_statuses",
-        description = "Get all statuses (user story, task, issue), priorities, severities, and issue types for a project. Crucial for finding valid status IDs.",
+        description = "Get all statuses (user story, task, issue), priorities, severities, issue types, project roles (UX, Frontend, Backend, etc.), and story points configurations for a project. Crucial for finding valid status IDs and role IDs/point IDs for story points.",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),

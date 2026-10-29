@@ -3,6 +3,7 @@ package dev.afalabarce.mcp.taiga.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class TaigaAuthResponse(
@@ -80,6 +81,7 @@ data class TaigaUserStory(
     @SerialName("status_extra_info") val statusExtraInfo: TaigaExtraInfo? = null,
     @SerialName("is_closed") val isClosed: Boolean = false,
     @SerialName("total_points") val totalPoints: Double? = null,
+    val points: JsonObject? = null,
     @SerialName("assigned_to") val assignedTo: Long? = null,
     @SerialName("assigned_to_extra_info") val assignedToExtraInfo: TaigaExtraInfo? = null,
     val tags: List<String> = emptyList(),
@@ -195,6 +197,24 @@ data class TaigaIssueType(
 )
 
 @Serializable
+data class TaigaRole(
+    val id: Long,
+    val name: String,
+    val slug: String? = null,
+    val order: Int = 0,
+    val project: Long? = null
+)
+
+@Serializable
+data class TaigaPoint(
+    val id: Long,
+    val name: String,
+    val value: Double,
+    val role: Long,
+    val order: Int = 0
+)
+
+@Serializable
 data class TaigaProjectStatuses(
     val projectId: Long,
     val userStoryStatuses: List<TaigaStatus> = emptyList(),
@@ -202,5 +222,7 @@ data class TaigaProjectStatuses(
     val issueStatuses: List<TaigaStatus> = emptyList(),
     val priorities: List<TaigaPriority> = emptyList(),
     val severities: List<TaigaSeverity> = emptyList(),
-    val issueTypes: List<TaigaIssueType> = emptyList()
+    val issueTypes: List<TaigaIssueType> = emptyList(),
+    val roles: List<TaigaRole> = emptyList(),
+    val points: List<TaigaPoint> = emptyList()
 )

@@ -75,6 +75,7 @@ object CreateUserStoryTool : McpTool {
                 "milestone_id" to SchemaBuilder.intProp("Milestone / Sprint ID to assign story to"),
                 "assigned_to" to SchemaBuilder.intProp("User ID to assign this story to"),
                 "tags" to SchemaBuilder.arrayProp("List of tags"),
+                "points" to SchemaBuilder.objectProp("Map of role IDs to point IDs for story points (e.g. {\"1\": 2})"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             ),
@@ -95,6 +96,7 @@ object CreateUserStoryTool : McpTool {
             args["milestone_id"]?.jsonPrimitive?.longOrNull?.let { put("milestone", it) }
             args["assigned_to"]?.jsonPrimitive?.longOrNull?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
+            args["points"]?.let { if (it is JsonObject) put("points", it) }
         }
 
         val story = client.createUserStory(payload)
@@ -116,6 +118,7 @@ object UpdateUserStoryTool : McpTool {
                 "milestone_id" to SchemaBuilder.intProp("Updated milestone ID (or null/0 to remove from sprint)"),
                 "assigned_to" to SchemaBuilder.intProp("Updated assigned user ID"),
                 "tags" to SchemaBuilder.arrayProp("Updated tags list"),
+                "points" to SchemaBuilder.objectProp("Updated map of role IDs to point IDs for story points"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             ),
@@ -136,6 +139,7 @@ object UpdateUserStoryTool : McpTool {
             args["milestone_id"]?.jsonPrimitive?.longOrNull?.let { put("milestone", it) }
             args["assigned_to"]?.jsonPrimitive?.longOrNull?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
+            args["points"]?.let { if (it is JsonObject) put("points", it) }
         }
 
         val updated = client.updateUserStory(id, payload)

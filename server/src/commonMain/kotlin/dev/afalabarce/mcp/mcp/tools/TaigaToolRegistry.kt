@@ -189,6 +189,11 @@ object SchemaBuilder {
         }
     }
 
+    fun objectProp(description: String): JsonObject = buildJsonObject {
+        put("type", "object")
+        put("description", description)
+    }
+
     inline fun <reified T> successJson(data: T): McpCallToolResult {
         val text = TaigaClient.json.encodeToString(data)
         return McpCallToolResult(content = listOf(McpContent(text = text)), isError = false)

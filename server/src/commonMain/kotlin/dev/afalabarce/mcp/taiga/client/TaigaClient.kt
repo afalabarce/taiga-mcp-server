@@ -27,6 +27,8 @@ import dev.afalabarce.mcp.taiga.model.TaigaMilestone
 import dev.afalabarce.mcp.taiga.model.TaigaPriority
 import dev.afalabarce.mcp.taiga.model.TaigaProject
 import dev.afalabarce.mcp.taiga.model.TaigaProjectStatuses
+import dev.afalabarce.mcp.taiga.model.TaigaPoint
+import dev.afalabarce.mcp.taiga.model.TaigaRole
 import dev.afalabarce.mcp.taiga.model.TaigaSeverity
 import dev.afalabarce.mcp.taiga.model.TaigaStatus
 import dev.afalabarce.mcp.taiga.model.TaigaTask
@@ -484,6 +486,26 @@ class TaigaClient(
         return json.decodeFromString<List<TaigaIssueType>>(text)
     }
 
+    suspend fun getProjectRoles(projectId: Long? = null): List<TaigaRole> {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/roles") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaRole>>(text)
+    }
+
+    suspend fun getProjectPoints(projectId: Long? = null): List<TaigaPoint> {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/points") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaPoint>>(text)
+    }
+
     suspend fun getAllProjectStatuses(projectId: Long? = null): TaigaProjectStatuses {
         val pid = projectId ?: resolveProjectId()
         return TaigaProjectStatuses(
@@ -493,7 +515,9 @@ class TaigaClient(
             issueStatuses = getIssueStatuses(pid),
             priorities = getPriorities(pid),
             severities = getSeverities(pid),
-            issueTypes = getIssueTypes(pid)
+            issueTypes = getIssueTypes(pid),
+            roles = getProjectRoles(pid),
+            points = getProjectPoints(pid)
         )
     }
 }
