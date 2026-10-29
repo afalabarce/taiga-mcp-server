@@ -29,3 +29,8 @@ Por favor, selecciona tu idioma para consultar la documentación completa:
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## M8ven mcp listing
+
+[![M8ven Score](https://m8ven.ai/badge/mcp/afalabarce-taiga-mcp-server-167tb8?v=f87097290a2632dc3217c180a9efeba8)](https://m8ven.ai/mcp/afalabarce-taiga-mcp-server-167tb8?s=readme)
+
