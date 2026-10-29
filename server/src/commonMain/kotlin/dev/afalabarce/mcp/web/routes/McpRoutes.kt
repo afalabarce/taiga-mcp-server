@@ -133,7 +133,10 @@ fun Route.mcpRoutes(
             return@post
         }
 
-        val handled = sessionManager.handleIncomingMessage(sessionId, request)
+        val principal = call.principal<TaigaUserPrincipal>()
+        val latestAuthToken = principal?.token
+
+        val handled = sessionManager.handleIncomingMessage(sessionId, request, latestAuthToken)
         if (!handled) {
             call.respond(HttpStatusCode.NotFound, "Session '$sessionId' not found or expired")
             return@post

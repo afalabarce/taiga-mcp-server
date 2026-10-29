@@ -11,9 +11,9 @@ import kotlin.random.Random
 data class McpSession(
     val id: String,
     val channel: Channel<String> = Channel(Channel.BUFFERED),
-    val authToken: String? = null,
-    val apiUrl: String? = null,
-    val project: String? = null
+    var authToken: String? = null,
+    var apiUrl: String? = null,
+    var project: String? = null
 )
 
 class McpSessionManager(
@@ -53,8 +53,18 @@ class McpSessionManager(
         session?.channel?.close()
     }
 
-    suspend fun handleIncomingMessage(sessionId: String, request: JsonRpcRequest): Boolean {
+    suspend fun handleIncomingMessage(
+        sessionId: String, 
+        request: JsonRpcRequest,
+        latestAuthToken: String? = null
+    ): Boolean {
         val session = getSession(sessionId) ?: return false
+        
+        // Update session token if a newer one is provided via current request authentication
+        if (latestAuthToken != null && latestAuthToken != session.authToken) {
+            session.authToken = latestAuthToken
+        }
+        
         val response = mcpServer.handleRequest(
             request = request,
             contextAuthToken = session.authToken,
