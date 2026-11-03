@@ -4,13 +4,21 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TaigaConfig(
-    val apiUrl: String = "https://api.taiga.io",
+    val apiUrl: String,
     val authToken: String? = null,
     val defaultProject: String? = null
 ) {
     fun normalizedApiUrl(): String {
-        val trimmed = apiUrl.trim()
-        return if (trimmed.endsWith("/")) trimmed.dropLast(1) else trimmed
+        var trimmed = apiUrl.trim()
+        if (trimmed.endsWith("/")) {
+            trimmed = trimmed.dropLast(1)
+        }
+        if (trimmed.endsWith("/api/v1")) {
+            trimmed = trimmed.removeSuffix("/api/v1")
+        } else if (trimmed.endsWith("/api")) {
+            trimmed = trimmed.removeSuffix("/api")
+        }
+        return trimmed
     }
 
     fun masked(): TaigaConfigResponse {

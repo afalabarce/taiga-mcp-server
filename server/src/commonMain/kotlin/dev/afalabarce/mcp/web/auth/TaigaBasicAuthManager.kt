@@ -65,7 +65,11 @@ open class TaigaBasicAuthManager(
                 )
             }
             token
+        } catch (e: TaigaApiException) {
+            System.err.println("Taiga Basic Auth 401/API Error for user '$username' at '$targetApiUrl' (Status ${e.statusCode}): ${e.message}")
+            null
         } catch (e: Exception) {
+            System.err.println("Taiga Basic Auth error for user '$username' at '$targetApiUrl': ${e.message}")
             null
         }
     }
