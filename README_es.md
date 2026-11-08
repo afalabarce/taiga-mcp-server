@@ -325,34 +325,66 @@ El servidor registra las siguientes herramientas bajo la especificación Model C
 |---|---|---|
 | `taiga_list_projects` | Lista los proyectos accesibles para el usuario | `member_id` |
 | `taiga_get_project` | Obtiene el detalle de un proyecto | `project_id`, `slug`, `project` |
+| `taiga_create_project` | Crea un nuevo proyecto | `name`, `description`, `is_private`, `tags` |
+| `taiga_update_project` | Modifica metadatos del proyecto | `project_id`, `project`, `name`, `description`, `is_private`, `tags` |
+| `taiga_delete_project` | Elimina un proyecto por ID o slug | `project_id`, `project` |
+| `taiga_list_memberships` | Lista membresías y roles del proyecto | `project` |
+| `taiga_create_membership` | Invita o añade un miembro con rol | `email`, `role`, `project` |
+| `taiga_delete_membership` | Elimina un miembro del proyecto | `id` |
+| `taiga_list_tags` | Lista etiquetas y colores del proyecto | `project` |
 | `taiga_list_user_stories` | Lista historias de usuario con filtros | `project`, `milestone_id`, `status_id`, `epic_id` |
-| `taiga_get_user_story` | Obtiene el detalle de una historia por ID | `id` |
-| `taiga_create_user_story` | Crea una historia de usuario | `subject`, `description`, `project`, `status_id`, `milestone_id`, `tags` |
-| `taiga_update_user_story` | Modifica una historia existente | `id`, `subject`, `description`, `status_id`, `version`, `milestone_id` |
+| `taiga_get_user_story` | Obtiene el detalle de una historia por ID o ref | `id`, `ref`, `project` |
+| `taiga_create_user_story` | Crea una historia de usuario | `subject`, `description`, `project`, `status`, `milestone`, `tags`, `points` |
+| `taiga_update_user_story` | Modifica una historia existente | `id`, `subject`, `description`, `status`, `version`, `milestone`, `assigned_to` |
 | `taiga_delete_user_story` | Elimina una historia de usuario | `id` |
-| `taiga_list_tasks` | Lista tareas de un proyecto o historia | `project`, `user_story_id`, `milestone_id`, `status_id`, `assigned_to` |
-| `taiga_get_task` | Obtiene el detalle de una tarea | `id` |
-| `taiga_create_task` | Crea una tarea | `subject`, `description`, `user_story_id`, `milestone_id`, `project` |
-| `taiga_update_task` | Modifica el estado o datos de una tarea | `id`, `subject`, `description`, `status_id`, `assigned_to`, `version` |
+| `taiga_list_tasks` | Lista tareas de un proyecto o historia | `project`, `user_story_id`, `milestone`, `status`, `assigned_to` |
+| `taiga_get_task` | Obtiene el detalle de una tarea por ID o ref | `id`, `ref`, `project` |
+| `taiga_create_task` | Crea una tarea | `subject`, `description`, `user_story_id`, `milestone`, `project`, `assigned_to` |
+| `taiga_update_task` | Modifica el estado o datos de una tarea | `id`, `subject`, `description`, `status`, `assigned_to`, `version` |
 | `taiga_delete_task` | Elimina una tarea | `id` |
-| `taiga_list_epics` | Lista las épicas de un proyecto | `project`, `status_id` |
-| `taiga_get_epic` | Obtiene el detalle de una épica | `id` |
+| `taiga_list_epics` | Lista las épicas de un proyecto | `project`, `status` |
+| `taiga_get_epic` | Obtiene el detalle de una épica por ID o ref | `id`, `ref`, `project` |
 | `taiga_create_epic` | Crea una épica con color y etiquetas | `subject`, `description`, `color`, `project`, `tags` |
-| `taiga_update_epic` | Modifica una épica existente | `id`, `subject`, `description`, `color`, `status_id`, `version` |
+| `taiga_update_epic` | Modifica una épica existente | `id`, `subject`, `description`, `color`, `status`, `version` |
 | `taiga_delete_epic` | Elimina una épica por ID | `id` |
-| `taiga_list_issues` | Lista incidencias o bugs | `project`, `status_id`, `priority_id`, `severity_id`, `type_id` |
-| `taiga_get_issue` | Obtiene el detalle de una incidencia | `id` |
-| `taiga_create_issue` | Registra un nuevo bug o incidencia | `subject`, `project`, `type_id`, `priority_id`, `severity_id`, `status_id` |
-| `taiga_update_issue` | Actualiza el estado o prioridad de una incidencia | `id`, `subject`, `status_id`, `priority_id`, `version` |
+| `taiga_list_epic_user_stories` | Lista historias vinculadas a una épica | `epic_id` |
+| `taiga_link_user_story_to_epic` | Vincula una historia de usuario a una épica | `epic_id`, `user_story_id`, `order` |
+| `taiga_unlink_user_story_from_epic` | Desvincula una historia de una épica | `epic_id`, `user_story_id` |
+| `taiga_list_issues` | Lista incidencias o bugs | `project`, `status`, `priority`, `severity`, `type` |
+| `taiga_get_issue` | Obtiene el detalle de una incidencia por ID o ref | `id`, `ref`, `project` |
+| `taiga_create_issue` | Registra un nuevo bug o incidencia | `subject`, `project`, `type`, `priority`, `severity`, `status` |
+| `taiga_update_issue` | Actualiza el estado o prioridad de una incidencia | `id`, `subject`, `status`, `priority`, `severity`, `version` |
 | `taiga_delete_issue` | Elimina una incidencia por ID | `id` |
+| `taiga_promote_issue_to_user_story` | Promociona un bug a historia de usuario | `id`, `project` |
 | `taiga_list_milestones` | Lista los sprints o hitos | `project` |
-| `taiga_get_milestone` | Consulta avance, historias y puntos del sprint | `id` |
+| `taiga_get_milestone` | Consulta avance, historias y puntos del sprint | `id`, `milestone`, `project` |
 | `taiga_create_milestone` | Planifica un nuevo sprint con fechas | `name`, `estimated_start`, `estimated_finish`, `project` |
+| `taiga_update_milestone` | Modifica datos o cierra un sprint | `id`, `milestone`, `name`, `estimated_start`, `closed`, `project` |
+| `taiga_delete_milestone` | Elimina un sprint por ID o nombre | `id`, `milestone`, `project` |
+| `taiga_get_milestone_stats` | Métricas de avance y burndown del sprint | `id`, `milestone`, `project` |
 | `taiga_list_wiki_pages` | Lista los artículos de la wiki | `project` |
-| `taiga_get_wiki_page` | Obtiene el contenido Markdown de un artículo | `slug`, `project` |
+| `taiga_get_wiki_page` | Obtiene el contenido Markdown de un artículo | `slug`, `id`, `project` |
 | `taiga_create_wiki_page` | Crea una nueva página wiki | `slug`, `content`, `project` |
 | `taiga_update_wiki_page` | Actualiza el texto de una página wiki | `id`, `content`, `version` |
-| `taiga_get_project_statuses`| Obtiene todos los IDs de estados, prioridades y tipos | `project` |
+| `taiga_delete_wiki_page` | Elimina una página wiki por ID o slug | `id`, `slug`, `project` |
+| `taiga_list_wiki_links` | Lista enlaces del menú de navegación wiki | `project` |
+| `taiga_create_wiki_link` | Añade un enlace al menú de navegación wiki | `title`, `href`, `order`, `project` |
+| `taiga_delete_wiki_link` | Elimina un enlace del menú de navegación wiki | `id` |
+| `taiga_list_attachments` | Lista archivos adjuntos de historias, tareas, bugs, epics o wiki | `type`, `object_id`, `project` |
+| `taiga_upload_attachment` | Sube un archivo adjunto (desde ruta local o base64) | `type`, `object_id`, `file_path`, `file_content_base64`, `file_name` |
+| `taiga_delete_attachment` | Elimina un archivo adjunto por ID | `type`, `attachment_id` |
+| `taiga_list_custom_attributes` | Lista campos personalizados de un tipo | `type`, `project` |
+| `taiga_create_custom_attribute` | Define un nuevo campo personalizado | `type`, `name`, `attribute_type`, `project` |
+| `taiga_delete_custom_attribute` | Elimina un campo personalizado | `type`, `id` |
+| `taiga_get_custom_attributes_values` | Consulta valores de campos personalizados de un elemento | `type`, `object_id` |
+| `taiga_update_custom_attributes_values` | Actualiza valores de campos personalizados con auto-versión | `type`, `object_id`, `values`, `version` |
+| `taiga_get_me` | Consulta perfil del usuario autenticado actual | *(ninguno)* |
+| `taiga_get_user` | Consulta perfil de un usuario por ID | `id` |
+| `taiga_upvote` | Vota a favor de una historia, tarea, bug o épica | `type`, `id` |
+| `taiga_downvote` | Retira el voto de una historia, tarea, bug o épica | `type`, `id` |
+| `taiga_watch` | Se suscribe a notificaciones de cualquier elemento | `type`, `id` |
+| `taiga_unwatch` | Cancela suscripción de notificaciones | `type`, `id` |
+| `taiga_get_project_statuses`| Obtiene todos los IDs de estados, prioridades, severidades y roles | `project` |
 | `taiga_search` | Búsqueda global de texto en historias, tareas, bugs, epics y wiki | `query`, `project` |
 | `taiga_get_project_summary`| Resumen ejecutivo con métricas de estados, sprints activos y miembros | `project` |
 | `taiga_add_comment` | Publica comentarios en historias, tareas, bugs o epics con auto-versión | `type`, `id`, `comment` |

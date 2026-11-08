@@ -58,20 +58,31 @@ object ListIssuesTool : McpTool {
 object GetIssueTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_get_issue",
-        description = "Get detailed information about an issue by its ID",
+        description = "Get detailed information about an issue by numeric ID or reference number (ref)",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
-                "id" to SchemaBuilder.intProp("The numeric ID of the issue"),
+                "id" to SchemaBuilder.intProp("The numeric ID of the issue (or specify 'ref')"),
+                "ref" to SchemaBuilder.intProp("The reference number (ref) of the issue in the project"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (required if using 'ref', defaults to configured project)"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
-            ),
-            required = listOf("id")
+            )
         )
     )
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
-        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
-        val issue = client.getIssue(id)
+        val ref = args["ref"]?.jsonPrimitive?.longOrNull
+        val id = args["id"]?.jsonPrimitive?.longOrNull
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+
+        val issue = if (ref != null) {
+            val projectId = client.resolveProjectId(projectParam)
+            client.getIssueByRef(ref, projectId)
+        } else if (id != null) {
+            client.getIssue(id)
+        } else {
+            throw IllegalArgumentException("Must specify either 'id' (numeric ID) or 'ref' (reference number)")
+        }
         return SchemaBuilder.successJson(issue)
     }
 }
@@ -227,5 +238,30 @@ object DeleteIssueTool : McpTool {
         val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
         client.deleteIssue(id)
         return SchemaBuilder.successText("Issue #$id successfully deleted.")
+    }
+}
+
+object PromoteIssueToUserStoryTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_promote_issue_to_user_story",
+        description = "Promote an existing issue/bug into a user story",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "id" to SchemaBuilder.intProp("The numeric ID of the issue to promote"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("id")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+
+        val story = client.promoteIssueToUserStory(id, projectId)
+        return SchemaBuilder.successJson(story)
     }
 }

@@ -326,34 +326,66 @@ The server registers the following tools under the Model Context Protocol specif
 |---|---|---|
 | `taiga_list_projects` | Lists projects accessible to the user | `member_id` |
 | `taiga_get_project` | Gets detailed information for a project | `project_id`, `slug`, `project` |
+| `taiga_create_project` | Creates a new project | `name`, `description`, `is_private`, `tags` |
+| `taiga_update_project` | Updates project metadata | `project_id`, `project`, `name`, `description`, `is_private`, `tags` |
+| `taiga_delete_project` | Deletes a project by ID or slug | `project_id`, `project` |
+| `taiga_list_memberships` | Lists project memberships and roles | `project` |
+| `taiga_create_membership` | Invites or adds a member with a role | `email`, `role`, `project` |
+| `taiga_delete_membership` | Removes a member from a project | `id` |
+| `taiga_list_tags` | Lists project tags and their colors | `project` |
 | `taiga_list_user_stories` | Lists user stories with optional filters | `project`, `milestone_id`, `status_id`, `epic_id` |
-| `taiga_get_user_story` | Retrieves a user story by ID | `id` |
-| `taiga_create_user_story` | Creates a new user story | `subject`, `description`, `project`, `status_id`, `milestone_id`, `tags` |
-| `taiga_update_user_story` | Updates an existing user story | `id`, `subject`, `description`, `status_id`, `version`, `milestone_id` |
+| `taiga_get_user_story` | Retrieves a user story by ID or ref | `id`, `ref`, `project` |
+| `taiga_create_user_story` | Creates a new user story | `subject`, `description`, `project`, `status`, `milestone`, `tags`, `points` |
+| `taiga_update_user_story` | Updates an existing user story | `id`, `subject`, `description`, `status`, `version`, `milestone`, `assigned_to` |
 | `taiga_delete_user_story` | Deletes a user story | `id` |
-| `taiga_list_tasks` | Lists tasks in a project or user story | `project`, `user_story_id`, `milestone_id`, `status_id`, `assigned_to` |
-| `taiga_get_task` | Retrieves details for a specific task | `id` |
-| `taiga_create_task` | Creates a new task | `subject`, `description`, `user_story_id`, `milestone_id`, `project` |
-| `taiga_update_task` | Updates task status or details | `id`, `subject`, `description`, `status_id`, `assigned_to`, `version` |
+| `taiga_list_tasks` | Lists tasks in a project or user story | `project`, `user_story_id`, `milestone`, `status`, `assigned_to` |
+| `taiga_get_task` | Retrieves details for a specific task by ID or ref | `id`, `ref`, `project` |
+| `taiga_create_task` | Creates a new task | `subject`, `description`, `user_story_id`, `milestone`, `project`, `assigned_to` |
+| `taiga_update_task` | Updates task status or details | `id`, `subject`, `description`, `status`, `assigned_to`, `version` |
 | `taiga_delete_task` | Deletes a task | `id` |
-| `taiga_list_epics` | Lists epics for a project | `project`, `status_id` |
-| `taiga_get_epic` | Retrieves epic details | `id` |
+| `taiga_list_epics` | Lists epics for a project | `project`, `status` |
+| `taiga_get_epic` | Retrieves epic details by ID or ref | `id`, `ref`, `project` |
 | `taiga_create_epic` | Creates an epic with color and tags | `subject`, `description`, `color`, `project`, `tags` |
-| `taiga_update_epic` | Modifies an existing epic | `id`, `subject`, `description`, `color`, `status_id`, `version` |
+| `taiga_update_epic` | Modifies an existing epic | `id`, `subject`, `description`, `color`, `status`, `version` |
 | `taiga_delete_epic` | Deletes an epic by ID | `id` |
-| `taiga_list_issues` | Lists issues or bugs | `project`, `status_id`, `priority_id`, `severity_id`, `type_id` |
-| `taiga_get_issue` | Retrieves issue details | `id` |
-| `taiga_create_issue` | Logs a new bug or issue | `subject`, `project`, `type_id`, `priority_id`, `severity_id`, `status_id` |
-| `taiga_update_issue` | Updates status or priority of an issue | `id`, `subject`, `status_id`, `priority_id`, `version` |
+| `taiga_list_epic_user_stories` | Lists user stories linked to an epic | `epic_id` |
+| `taiga_link_user_story_to_epic` | Links a user story to an epic | `epic_id`, `user_story_id`, `order` |
+| `taiga_unlink_user_story_from_epic` | Unlinks a user story from an epic | `epic_id`, `user_story_id` |
+| `taiga_list_issues` | Lists issues or bugs | `project`, `status`, `priority`, `severity`, `type` |
+| `taiga_get_issue` | Retrieves issue details by ID or ref | `id`, `ref`, `project` |
+| `taiga_create_issue` | Logs a new bug or issue | `subject`, `project`, `type`, `priority`, `severity`, `status` |
+| `taiga_update_issue` | Updates status or priority of an issue | `id`, `subject`, `status`, `priority`, `severity`, `version` |
 | `taiga_delete_issue` | Deletes an issue by ID | `id` |
+| `taiga_promote_issue_to_user_story` | Promotes a bug/issue into a user story | `id`, `project` |
 | `taiga_list_milestones` | Lists sprints or milestones | `project` |
-| `taiga_get_milestone` | Inspects sprint progress, stories, and points | `id` |
+| `taiga_get_milestone` | Inspects sprint progress, stories, and points | `id`, `milestone`, `project` |
 | `taiga_create_milestone` | Schedules a new sprint with start/end dates | `name`, `estimated_start`, `estimated_finish`, `project` |
+| `taiga_update_milestone` | Updates milestone details or closes sprint | `id`, `milestone`, `name`, `estimated_start`, `closed`, `project` |
+| `taiga_delete_milestone` | Deletes a milestone by ID or name | `id`, `milestone`, `project` |
+| `taiga_get_milestone_stats` | Sprint progress and burndown stats | `id`, `milestone`, `project` |
 | `taiga_list_wiki_pages` | Lists wiki articles | `project` |
-| `taiga_get_wiki_page` | Retrieves Markdown content of a wiki page | `slug`, `project` |
+| `taiga_get_wiki_page` | Retrieves Markdown content of a wiki page | `slug`, `id`, `project` |
 | `taiga_create_wiki_page` | Creates a new wiki page | `slug`, `content`, `project` |
 | `taiga_update_wiki_page` | Updates content of a wiki page | `id`, `content`, `version` |
-| `taiga_get_project_statuses`| Retrieves all IDs for statuses, priorities, and types | `project` |
+| `taiga_delete_wiki_page` | Deletes a wiki page by ID or slug | `id`, `slug`, `project` |
+| `taiga_list_wiki_links` | Lists wiki navigation links | `project` |
+| `taiga_create_wiki_link` | Adds a new link to wiki navigation menu | `title`, `href`, `order`, `project` |
+| `taiga_delete_wiki_link` | Deletes a wiki link | `id` |
+| `taiga_list_attachments` | Lists attachments for stories, tasks, issues, epics, wiki | `type`, `object_id`, `project` |
+| `taiga_upload_attachment` | Uploads an attachment (from local file or base64) | `type`, `object_id`, `file_path`, `file_content_base64`, `file_name` |
+| `taiga_delete_attachment` | Deletes an attachment by ID | `type`, `attachment_id` |
+| `taiga_list_custom_attributes` | Lists custom fields defined for a resource | `type`, `project` |
+| `taiga_create_custom_attribute` | Defines a new custom attribute on project | `type`, `name`, `attribute_type`, `project` |
+| `taiga_delete_custom_attribute` | Deletes a custom attribute definition | `type`, `id` |
+| `taiga_get_custom_attributes_values` | Retrieves custom field values for an item | `type`, `object_id` |
+| `taiga_update_custom_attributes_values` | Updates custom field values with auto-versioning | `type`, `object_id`, `values`, `version` |
+| `taiga_get_me` | Retrieves profile of currently authenticated user | *(none)* |
+| `taiga_get_user` | Retrieves profile of a user by ID | `id` |
+| `taiga_upvote` | Casts a vote on a story, task, issue, or epic | `type`, `id` |
+| `taiga_downvote` | Removes vote from a story, task, issue, or epic | `type`, `id` |
+| `taiga_watch` | Subscribes to notifications for any resource | `type`, `id` |
+| `taiga_unwatch` | Unsubscribes from notifications | `type`, `id` |
+| `taiga_get_project_statuses`| Retrieves all IDs for statuses, priorities, severities, and roles | `project` |
 | `taiga_search` | Unified global search across stories, tasks, issues, epics, and wiki | `query`, `project` |
 | `taiga_get_project_summary`| Executive summary with status metrics, active sprints, and members | `project` |
 | `taiga_add_comment` | Posts comments on stories, tasks, issues, or epics with auto-versioning | `type`, `id`, `comment` |

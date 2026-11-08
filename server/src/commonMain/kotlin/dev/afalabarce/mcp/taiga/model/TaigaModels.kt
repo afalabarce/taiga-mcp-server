@@ -4,6 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 
 @Serializable
 data class TaigaAuthResponse(
@@ -35,7 +36,7 @@ data class TaigaProject(
     @SerialName("is_private") val isPrivate: Boolean? = null,
     @SerialName("total_milestones") val totalMilestones: Int? = null,
     @SerialName("total_story_points") val totalStoryPoints: Double? = null,
-    val tags: List<String> = emptyList(),
+    val tags: List<JsonElement> = emptyList(),
     @SerialName("my_permissions") val myPermissions: List<String> = emptyList()
 )
 
@@ -62,7 +63,7 @@ data class TaigaEpic(
     @SerialName("assigned_to") val assignedTo: Long? = null,
     @SerialName("assigned_to_extra_info") val assignedToExtraInfo: TaigaExtraInfo? = null,
     val color: String? = null,
-    val tags: List<String> = emptyList(),
+    val tags: List<JsonElement> = emptyList(),
     val version: Int = 1,
     @SerialName("created_date") val createdDate: String? = null,
     @SerialName("modified_date") val modifiedDate: String? = null
@@ -84,7 +85,7 @@ data class TaigaUserStory(
     val points: JsonObject? = null,
     @SerialName("assigned_to") val assignedTo: Long? = null,
     @SerialName("assigned_to_extra_info") val assignedToExtraInfo: TaigaExtraInfo? = null,
-    val tags: List<String> = emptyList(),
+    val tags: List<JsonElement> = emptyList(),
     val version: Int = 1,
     @SerialName("created_date") val createdDate: String? = null,
     @SerialName("modified_date") val modifiedDate: String? = null
@@ -106,7 +107,7 @@ data class TaigaTask(
     @SerialName("is_closed") val isClosed: Boolean = false,
     @SerialName("assigned_to") val assignedTo: Long? = null,
     @SerialName("assigned_to_extra_info") val assignedToExtraInfo: TaigaExtraInfo? = null,
-    val tags: List<String> = emptyList(),
+    val tags: List<JsonElement> = emptyList(),
     val version: Int = 1,
     @SerialName("created_date") val createdDate: String? = null,
     @SerialName("modified_date") val modifiedDate: String? = null
@@ -127,7 +128,7 @@ data class TaigaIssue(
     @SerialName("is_closed") val isClosed: Boolean = false,
     @SerialName("assigned_to") val assignedTo: Long? = null,
     @SerialName("assigned_to_extra_info") val assignedToExtraInfo: TaigaExtraInfo? = null,
-    val tags: List<String> = emptyList(),
+    val tags: List<JsonElement> = emptyList(),
     val version: Int = 1,
     @SerialName("created_date") val createdDate: String? = null,
     @SerialName("modified_date") val modifiedDate: String? = null
@@ -275,4 +276,57 @@ data class TaigaProjectSummary(
     val taskCountByStatus: Map<String, Int> = emptyMap(),
     val issueCountByStatus: Map<String, Int> = emptyMap(),
     val members: List<String> = emptyList()
+)
+
+@Serializable
+data class TaigaAttachment(
+    val id: Long,
+    val name: String,
+    val size: Long? = null,
+    val url: String? = null,
+    @SerialName("thumbnail_card_url") val thumbnailCardUrl: String? = null,
+    val description: String? = null,
+    @SerialName("attached_file") val attachedFile: String? = null,
+    @SerialName("is_deprecated") val isDeprecated: Boolean = false,
+    @SerialName("from_comment") val fromComment: Boolean = false,
+    @SerialName("created_date") val createdDate: String? = null,
+    @SerialName("modified_date") val modifiedDate: String? = null,
+    @SerialName("object_id") val objectId: Long? = null,
+    val project: Long? = null,
+    val owner: Long? = null,
+    val sha1: String? = null
+)
+
+@Serializable
+data class TaigaCustomAttribute(
+    val id: Long,
+    val name: String,
+    val description: String? = null,
+    val type: String? = null,
+    val order: Int = 0,
+    val project: Long
+)
+
+@Serializable
+data class TaigaCustomAttributesValues(
+    @SerialName("attributes_values") val attributesValues: JsonObject = buildJsonObject { },
+    val version: Int = 1
+)
+
+@Serializable
+data class TaigaEpicRelatedUserStory(
+    val id: Long,
+    val epic: Long,
+    @SerialName("user_story") val userStory: Long,
+    val order: Long? = null,
+    @SerialName("user_story_extra_info") val userStoryExtraInfo: TaigaExtraInfo? = null
+)
+
+@Serializable
+data class TaigaWikiLink(
+    val id: Long,
+    val title: String,
+    val href: String,
+    val order: Long? = null,
+    val project: Long
 )

@@ -5,9 +5,14 @@ import dev.afalabarce.mcp.mcp.protocol.McpCallToolResult
 import dev.afalabarce.mcp.mcp.protocol.McpToolDefinition
 import dev.afalabarce.mcp.taiga.client.TaigaClient
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 
 object ListProjectsTool : McpTool {
     override val definition = McpToolDefinition(
@@ -62,5 +67,204 @@ object GetProjectTool : McpTool {
             }
         }
         return SchemaBuilder.successJson(project)
+    }
+}
+
+object CreateProjectTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_create_project",
+        description = "Create a new project in Taiga",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "name" to SchemaBuilder.stringProp("Project display name"),
+                "description" to SchemaBuilder.stringProp("Project description"),
+                "is_private" to SchemaBuilder.booleanProp("Whether project is private (true) or public (false). Default: true"),
+                "tags" to SchemaBuilder.arrayProp("List of project tags"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("name", "description")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val name = args["name"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'name'")
+        val description = args["description"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'description'")
+        val isPrivate = args["is_private"]?.jsonPrimitive?.booleanOrNull ?: true
+
+        val payload = buildJsonObject {
+            put("name", name)
+            put("description", description)
+            put("is_private", isPrivate)
+            args["tags"]?.let { tagsEl ->
+                val tagsList = tagsEl.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }
+                put("tags", buildJsonArray { tagsList.forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) } })
+            }
+        }
+
+        val project = client.createProject(payload)
+        return SchemaBuilder.successJson(project)
+    }
+}
+
+object UpdateProjectTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_update_project",
+        description = "Update project metadata (name, description, privacy, tags)",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project_id" to SchemaBuilder.intProp("Numeric ID of the project"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "name" to SchemaBuilder.stringProp("Updated project name"),
+                "description" to SchemaBuilder.stringProp("Updated project description"),
+                "is_private" to SchemaBuilder.booleanProp("Update privacy setting"),
+                "tags" to SchemaBuilder.arrayProp("Updated list of tags"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectId = args["project_id"]?.jsonPrimitive?.longOrNull
+            ?: client.resolveProjectId(args["project"]?.jsonPrimitive?.contentOrNull)
+
+        val payload = buildJsonObject {
+            args["name"]?.jsonPrimitive?.contentOrNull?.let { put("name", it) }
+            args["description"]?.jsonPrimitive?.contentOrNull?.let { put("description", it) }
+            args["is_private"]?.jsonPrimitive?.booleanOrNull?.let { put("is_private", it) }
+            args["tags"]?.let { tagsEl ->
+                val tagsList = tagsEl.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }
+                put("tags", buildJsonArray { tagsList.forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) } })
+            }
+        }
+
+        val updated = client.updateProject(projectId, payload)
+        return SchemaBuilder.successJson(updated)
+    }
+}
+
+object DeleteProjectTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_delete_project",
+        description = "Delete a project by numeric ID or slug",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project_id" to SchemaBuilder.intProp("Numeric ID of the project to delete"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug to delete"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectId = args["project_id"]?.jsonPrimitive?.longOrNull
+            ?: client.resolveProjectId(args["project"]?.jsonPrimitive?.contentOrNull)
+
+        client.deleteProject(projectId)
+        return SchemaBuilder.successText("Project #$projectId successfully deleted.")
+    }
+}
+
+object ListMembershipsTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_list_memberships",
+        description = "List all memberships (members and their roles, invitation status) in a project",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+        val memberships = client.listMemberships(projectId)
+        return SchemaBuilder.successJson(memberships)
+    }
+}
+
+object CreateMembershipTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_create_membership",
+        description = "Add or invite a member to a project with a specific role name (e.g. 'Front', 'Back', 'Product Owner') or numeric role ID",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "email" to SchemaBuilder.stringProp("Email of the user to invite / add"),
+                "role" to SchemaBuilder.stringProp("Role name (e.g. 'Back', 'Front', 'UX', 'Product Owner') or numeric role ID"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("email", "role")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val email = args["email"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'email'")
+        val roleParam = args["role"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'role'")
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+
+        val roleId = roleParam.toLongOrNull() ?: run {
+            val roles = client.getProjectRoles(projectId)
+            roles.firstOrNull { it.name.equals(roleParam, ignoreCase = true) || it.slug.equals(roleParam, ignoreCase = true) }?.id
+                ?: throw IllegalArgumentException("Role '$roleParam' not found. Available roles: ${roles.map { it.name }}")
+        }
+
+        val payload = buildJsonObject {
+            put("project", projectId)
+            put("role", roleId)
+            put("email", email)
+        }
+
+        val membership = client.createMembership(payload)
+        return SchemaBuilder.successJson(membership)
+    }
+}
+
+object DeleteMembershipTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_delete_membership",
+        description = "Remove a member from a project by their membership ID",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "id" to SchemaBuilder.intProp("The numeric ID of the membership to delete"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("id")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
+        client.deleteMembership(id)
+        return SchemaBuilder.successText("Membership #$id deleted successfully.")
+    }
+}
+
+object ListTagsTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_list_tags",
+        description = "List all existing tags and their associated color codes in a project",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+        val tags = client.getProjectTags(projectId)
+        return SchemaBuilder.successJson(tags)
     }
 }

@@ -5,6 +5,8 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -14,13 +16,18 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import dev.afalabarce.mcp.config.TaigaConfig
+import dev.afalabarce.mcp.taiga.model.TaigaAttachment
 import dev.afalabarce.mcp.taiga.model.TaigaAuthResponse
+import dev.afalabarce.mcp.taiga.model.TaigaCustomAttribute
+import dev.afalabarce.mcp.taiga.model.TaigaCustomAttributesValues
 import dev.afalabarce.mcp.taiga.model.TaigaEpic
+import dev.afalabarce.mcp.taiga.model.TaigaEpicRelatedUserStory
 import dev.afalabarce.mcp.taiga.model.TaigaHistoryEntry
 import dev.afalabarce.mcp.taiga.model.TaigaIssue
 import dev.afalabarce.mcp.taiga.model.TaigaIssueType
@@ -38,6 +45,7 @@ import dev.afalabarce.mcp.taiga.model.TaigaStatus
 import dev.afalabarce.mcp.taiga.model.TaigaTask
 import dev.afalabarce.mcp.taiga.model.TaigaUser
 import dev.afalabarce.mcp.taiga.model.TaigaUserStory
+import dev.afalabarce.mcp.taiga.model.TaigaWikiLink
 import dev.afalabarce.mcp.taiga.model.TaigaWikiPage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -645,6 +653,421 @@ class TaigaClient(
             roles = getProjectRoles(pid),
             points = getProjectPoints(pid)
         )
+    }
+
+    // --- Users ---
+    suspend fun getUser(id: Long): TaigaUser {
+        val response = httpClient.get("$baseUrl/api/v1/users/$id") {
+            authenticatedRequest(this)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaUser>(text)
+    }
+
+    // --- By Ref Lookups ---
+    suspend fun getEpicByRef(ref: Long, projectId: Long? = null): TaigaEpic {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/epics/by_ref") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+            parameter("ref", ref)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaEpic>(text)
+    }
+
+    suspend fun getUserStoryByRef(ref: Long, projectId: Long? = null): TaigaUserStory {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/userstories/by_ref") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+            parameter("ref", ref)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaUserStory>(text)
+    }
+
+    suspend fun getTaskByRef(ref: Long, projectId: Long? = null): TaigaTask {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/tasks/by_ref") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+            parameter("ref", ref)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaTask>(text)
+    }
+
+    suspend fun getIssueByRef(ref: Long, projectId: Long? = null): TaigaIssue {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/issues/by_ref") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+            parameter("ref", ref)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaIssue>(text)
+    }
+
+    // --- Project Management ---
+    suspend fun createProject(data: JsonObject): TaigaProject {
+        val response = httpClient.post("$baseUrl/api/v1/projects") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(data)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaProject>(text)
+    }
+
+    suspend fun updateProject(id: Long, data: JsonObject): TaigaProject {
+        val response = httpClient.patch("$baseUrl/api/v1/projects/$id") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(data)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaProject>(text)
+    }
+
+    suspend fun deleteProject(id: Long): Boolean {
+        val response = httpClient.delete("$baseUrl/api/v1/projects/$id") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    suspend fun getProjectTags(projectId: Long? = null): JsonObject {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/projects/$pid/tags_colors") {
+            authenticatedRequest(this)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<JsonObject>(text)
+    }
+
+    // --- Memberships ---
+    suspend fun createMembership(data: JsonObject): TaigaMembership {
+        val response = httpClient.post("$baseUrl/api/v1/memberships") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(data)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaMembership>(text)
+    }
+
+    suspend fun deleteMembership(id: Long): Boolean {
+        val response = httpClient.delete("$baseUrl/api/v1/memberships/$id") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    // --- Milestone Extended ---
+    suspend fun updateMilestone(id: Long, data: JsonObject): TaigaMilestone {
+        val response = httpClient.patch("$baseUrl/api/v1/milestones/$id") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(data)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaMilestone>(text)
+    }
+
+    suspend fun deleteMilestone(id: Long): Boolean {
+        val response = httpClient.delete("$baseUrl/api/v1/milestones/$id") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    suspend fun getMilestoneStats(id: Long): JsonObject {
+        val response = httpClient.get("$baseUrl/api/v1/milestones/$id/stats") {
+            authenticatedRequest(this)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<JsonObject>(text)
+    }
+
+    // --- Wiki Extended ---
+    suspend fun deleteWikiPage(id: Long): Boolean {
+        val response = httpClient.delete("$baseUrl/api/v1/wiki/$id") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    suspend fun listWikiLinks(projectId: Long? = null): List<TaigaWikiLink> {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/wiki-links") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaWikiLink>>(text)
+    }
+
+    suspend fun createWikiLink(data: JsonObject): TaigaWikiLink {
+        val response = httpClient.post("$baseUrl/api/v1/wiki-links") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(data)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaWikiLink>(text)
+    }
+
+    suspend fun deleteWikiLink(id: Long): Boolean {
+        val response = httpClient.delete("$baseUrl/api/v1/wiki-links/$id") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    // --- Epic Related User Stories ---
+    suspend fun listEpicRelatedUserStories(epicId: Long): List<TaigaEpicRelatedUserStory> {
+        val response = httpClient.get("$baseUrl/api/v1/epics/$epicId/related_userstories") {
+            authenticatedRequest(this)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaEpicRelatedUserStory>>(text)
+    }
+
+    suspend fun linkUserStoryToEpic(epicId: Long, userStoryId: Long, order: Long? = null): TaigaEpicRelatedUserStory {
+        val payload = buildJsonObject {
+            put("epic", epicId)
+            put("user_story", userStoryId)
+            order?.let { put("order", it) }
+        }
+        val response = httpClient.post("$baseUrl/api/v1/epics/$epicId/related_userstories") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaEpicRelatedUserStory>(text)
+    }
+
+    suspend fun unlinkUserStoryFromEpic(epicId: Long, userStoryId: Long): Boolean {
+        val relations = listEpicRelatedUserStories(epicId)
+        val relation = relations.firstOrNull { it.userStory == userStoryId || it.id == userStoryId }
+            ?: throw IllegalArgumentException("User story $userStoryId is not linked to epic $epicId")
+        val response = httpClient.delete("$baseUrl/api/v1/epics/$epicId/related_userstories/${relation.id}") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    // --- Custom Attributes ---
+    private fun normalizeCustomAttributeType(type: String): String = when (type.lowercase().trim()) {
+        "user_story", "userstory", "story", "userstories" -> "userstory"
+        "task", "tasks" -> "task"
+        "issue", "issues", "bug", "bugs" -> "issue"
+        "epic", "epics" -> "epic"
+        else -> throw IllegalArgumentException("Unsupported custom attribute type '$type'. Supported: userstory, task, issue, epic")
+    }
+
+    suspend fun listCustomAttributes(type: String, projectId: Long? = null): List<TaigaCustomAttribute> {
+        val pid = projectId ?: resolveProjectId()
+        val t = normalizeCustomAttributeType(type)
+        val response = httpClient.get("$baseUrl/api/v1/$t-custom-attributes") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaCustomAttribute>>(text)
+    }
+
+    suspend fun createCustomAttribute(type: String, data: JsonObject): TaigaCustomAttribute {
+        val t = normalizeCustomAttributeType(type)
+        val response = httpClient.post("$baseUrl/api/v1/$t-custom-attributes") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(data)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaCustomAttribute>(text)
+    }
+
+    suspend fun deleteCustomAttribute(type: String, id: Long): Boolean {
+        val t = normalizeCustomAttributeType(type)
+        val response = httpClient.delete("$baseUrl/api/v1/$t-custom-attributes/$id") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    suspend fun getCustomAttributesValues(type: String, objectId: Long): TaigaCustomAttributesValues {
+        val plural = when (normalizeCustomAttributeType(type)) {
+            "userstory" -> "userstories"
+            "task" -> "tasks"
+            "issue" -> "issues"
+            "epic" -> "epics"
+            else -> "userstories"
+        }
+        val response = httpClient.get("$baseUrl/api/v1/$plural/custom-attributes-values/$objectId") {
+            authenticatedRequest(this)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaCustomAttributesValues>(text)
+    }
+
+    suspend fun updateCustomAttributesValues(
+        type: String,
+        objectId: Long,
+        values: JsonObject,
+        version: Int? = null
+    ): TaigaCustomAttributesValues {
+        val plural = when (normalizeCustomAttributeType(type)) {
+            "userstory" -> "userstories"
+            "task" -> "tasks"
+            "issue" -> "issues"
+            "epic" -> "epics"
+            else -> "userstories"
+        }
+        val actualVersion = version ?: getCustomAttributesValues(type, objectId).version
+        val payload = buildJsonObject {
+            put("attributes_values", values)
+            put("version", actualVersion)
+        }
+        val response = httpClient.patch("$baseUrl/api/v1/$plural/custom-attributes-values/$objectId") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaCustomAttributesValues>(text)
+    }
+
+    // --- Attachments ---
+    private fun normalizeAttachmentEndpoint(type: String): String = when (type.lowercase().trim()) {
+        "user_story", "userstory", "story", "userstories" -> "userstories/attachments"
+        "task", "tasks" -> "tasks/attachments"
+        "issue", "issues", "bug", "bugs" -> "issues/attachments"
+        "epic", "epics" -> "epics/attachments"
+        "wiki", "wikipage", "wiki_page" -> "wiki/attachments"
+        else -> throw IllegalArgumentException("Unsupported attachment type '$type'. Supported: user_story, task, issue, epic, wiki")
+    }
+
+    suspend fun listAttachments(type: String, objectId: Long, projectId: Long? = null): List<TaigaAttachment> {
+        val pid = projectId ?: resolveProjectId()
+        val ep = normalizeAttachmentEndpoint(type)
+        val response = httpClient.get("$baseUrl/api/v1/$ep") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+            parameter("object_id", objectId)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaAttachment>>(text)
+    }
+
+    suspend fun uploadAttachment(
+        type: String,
+        objectId: Long,
+        projectId: Long? = null,
+        filename: String,
+        fileBytes: ByteArray,
+        mimeType: String = "application/octet-stream",
+        description: String? = null
+    ): TaigaAttachment {
+        val pid = projectId ?: resolveProjectId()
+        val ep = normalizeAttachmentEndpoint(type)
+        val response = httpClient.post("$baseUrl/api/v1/$ep") {
+            authenticatedRequest(this)
+            setBody(MultiPartFormDataContent(
+                formData {
+                    append("project", pid.toString())
+                    append("object_id", objectId.toString())
+                    description?.let { append("description", it) }
+                    append("attached_file", fileBytes, Headers.build {
+                        append(HttpHeaders.ContentType, mimeType)
+                        append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                    })
+                }
+            ))
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaAttachment>(text)
+    }
+
+    suspend fun deleteAttachment(type: String, attachmentId: Long): Boolean {
+        val ep = normalizeAttachmentEndpoint(type)
+        val response = httpClient.delete("$baseUrl/api/v1/$ep/$attachmentId") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    // --- Interactions (Voting & Watching) ---
+    private fun normalizeInteractionResource(type: String): String = when (type.lowercase().trim()) {
+        "user_story", "userstory", "story", "userstories" -> "userstories"
+        "task", "tasks" -> "tasks"
+        "issue", "issues", "bug", "bugs" -> "issues"
+        "epic", "epics" -> "epics"
+        "milestone", "milestones", "sprint" -> "milestones"
+        "wiki", "wikipage", "wiki_page" -> "wiki"
+        "project", "projects" -> "projects"
+        else -> throw IllegalArgumentException("Unsupported interaction resource '$type'")
+    }
+
+    suspend fun upvote(type: String, id: Long): Boolean {
+        val plural = normalizeInteractionResource(type)
+        val response = httpClient.post("$baseUrl/api/v1/$plural/$id/upvote") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    suspend fun downvote(type: String, id: Long): Boolean {
+        val plural = normalizeInteractionResource(type)
+        val response = httpClient.post("$baseUrl/api/v1/$plural/$id/downvote") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    suspend fun watch(type: String, id: Long): Boolean {
+        val plural = normalizeInteractionResource(type)
+        val response = httpClient.post("$baseUrl/api/v1/$plural/$id/watch") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    suspend fun unwatch(type: String, id: Long): Boolean {
+        val plural = normalizeInteractionResource(type)
+        val response = httpClient.post("$baseUrl/api/v1/$plural/$id/unwatch") {
+            authenticatedRequest(this)
+        }
+        handleResponse(response)
+        return true
+    }
+
+    // --- Promotion ---
+    suspend fun promoteIssueToUserStory(issueId: Long, projectId: Long? = null): TaigaUserStory {
+        val pid = projectId ?: resolveProjectId()
+        val payload = buildJsonObject {
+            put("project_id", pid)
+        }
+        val response = httpClient.post("$baseUrl/api/v1/issues/$issueId/promote_to_user_story") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaUserStory>(text)
     }
 }
 

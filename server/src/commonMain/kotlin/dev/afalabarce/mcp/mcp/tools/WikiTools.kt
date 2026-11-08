@@ -130,3 +130,117 @@ object UpdateWikiPageTool : McpTool {
         return SchemaBuilder.successJson(updated)
     }
 }
+
+object DeleteWikiPageTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_delete_wiki_page",
+        description = "Delete a wiki page by ID or slug",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "id" to SchemaBuilder.intProp("Numeric ID of the wiki page (or specify 'slug')"),
+                "slug" to SchemaBuilder.stringProp("Slug of the wiki page (e.g. 'home')"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (required if using 'slug', defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val idParam = args["id"]?.jsonPrimitive?.longOrNull
+        val slugParam = args["slug"]?.jsonPrimitive?.contentOrNull
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+
+        val pageId = when {
+            idParam != null -> idParam
+            slugParam != null -> {
+                val projectId = client.resolveProjectId(projectParam)
+                client.getWikiPageBySlug(projectId, slugParam).id
+                    ?: throw IllegalArgumentException("Wiki page '$slugParam' not found")
+            }
+            else -> throw IllegalArgumentException("Either 'id' or 'slug' must be provided")
+        }
+
+        client.deleteWikiPage(pageId)
+        return SchemaBuilder.successText("Wiki page #$pageId successfully deleted.")
+    }
+}
+
+object ListWikiLinksTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_list_wiki_links",
+        description = "List all wiki links / navigation table of contents for a Taiga project",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+
+        val links = client.listWikiLinks(projectId)
+        return SchemaBuilder.successJson(links)
+    }
+}
+
+object CreateWikiLinkTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_create_wiki_link",
+        description = "Create a new wiki link entry in project wiki navigation",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "title" to SchemaBuilder.stringProp("Display title of the link"),
+                "href" to SchemaBuilder.stringProp("Slug or URL target of the link (e.g. 'architecture-overview')"),
+                "order" to SchemaBuilder.intProp("Display order in navigation menu"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("title", "href")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val title = args["title"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'title'")
+        val href = args["href"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'href'")
+        val order = args["order"]?.jsonPrimitive?.longOrNull
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+
+        val payload = buildJsonObject {
+            put("title", title)
+            put("href", href)
+            put("project", projectId)
+            order?.let { put("order", it) }
+        }
+
+        val result = client.createWikiLink(payload)
+        return SchemaBuilder.successJson(result)
+    }
+}
+
+object DeleteWikiLinkTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_delete_wiki_link",
+        description = "Delete a wiki link entry by its numeric ID",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "id" to SchemaBuilder.intProp("Numeric ID of the wiki link to delete"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("id")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
+        client.deleteWikiLink(id)
+        return SchemaBuilder.successText("Wiki link #$id successfully deleted.")
+    }
+}

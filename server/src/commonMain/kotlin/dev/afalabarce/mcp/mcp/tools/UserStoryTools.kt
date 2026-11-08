@@ -51,20 +51,31 @@ object ListUserStoriesTool : McpTool {
 object GetUserStoryTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_get_user_story",
-        description = "Get detailed information about a user story by ID (including status, points, milestone, assignee, and tags)",
+        description = "Get detailed information about a user story by numeric ID or reference number (ref)",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
-                "id" to SchemaBuilder.intProp("The numeric ID of the user story"),
+                "id" to SchemaBuilder.intProp("The numeric ID of the user story (or specify 'ref')"),
+                "ref" to SchemaBuilder.intProp("The reference number (ref) of the user story in the project"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (required if using 'ref', defaults to configured project)"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
-            ),
-            required = listOf("id")
+            )
         )
     )
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
-        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
-        val story = client.getUserStory(id)
+        val ref = args["ref"]?.jsonPrimitive?.longOrNull
+        val id = args["id"]?.jsonPrimitive?.longOrNull
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+
+        val story = if (ref != null) {
+            val projectId = client.resolveProjectId(projectParam)
+            client.getUserStoryByRef(ref, projectId)
+        } else if (id != null) {
+            client.getUserStory(id)
+        } else {
+            throw IllegalArgumentException("Must specify either 'id' (numeric ID) or 'ref' (reference number)")
+        }
         return SchemaBuilder.successJson(story)
     }
 }

@@ -15,6 +15,11 @@ actual fun readFileTextIfExists(path: String): String? {
     return if (file.exists() && file.isFile) file.readText() else null
 }
 
+actual fun readFileBytesIfExists(path: String): ByteArray? {
+    val file = File(path)
+    return if (file.exists() && file.isFile) file.readBytes() else null
+}
+
 actual fun fileExists(path: String): Boolean = File(path).exists()
 
 actual fun configureLogbackFile(path: String): Boolean {

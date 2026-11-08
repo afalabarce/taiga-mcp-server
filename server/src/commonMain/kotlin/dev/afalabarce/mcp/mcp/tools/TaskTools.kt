@@ -54,20 +54,31 @@ object ListTasksTool : McpTool {
 object GetTaskTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_get_task",
-        description = "Get detailed information about a task by its numeric ID",
+        description = "Get detailed information about a task by numeric ID or reference number (ref)",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
-                "id" to SchemaBuilder.intProp("The numeric ID of the task"),
+                "id" to SchemaBuilder.intProp("The numeric ID of the task (or specify 'ref')"),
+                "ref" to SchemaBuilder.intProp("The reference number (ref) of the task in the project"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (required if using 'ref', defaults to configured project)"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
-            ),
-            required = listOf("id")
+            )
         )
     )
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
-        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
-        val task = client.getTask(id)
+        val ref = args["ref"]?.jsonPrimitive?.longOrNull
+        val id = args["id"]?.jsonPrimitive?.longOrNull
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+
+        val task = if (ref != null) {
+            val projectId = client.resolveProjectId(projectParam)
+            client.getTaskByRef(ref, projectId)
+        } else if (id != null) {
+            client.getTask(id)
+        } else {
+            throw IllegalArgumentException("Must specify either 'id' (numeric ID) or 'ref' (reference number)")
+        }
         return SchemaBuilder.successJson(task)
     }
 }

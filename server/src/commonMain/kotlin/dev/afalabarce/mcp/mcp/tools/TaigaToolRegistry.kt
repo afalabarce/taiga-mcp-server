@@ -107,6 +107,13 @@ class TaigaToolRegistry(
         // --- Projects ---
         register(ListProjectsTool)
         register(GetProjectTool)
+        register(CreateProjectTool)
+        register(UpdateProjectTool)
+        register(DeleteProjectTool)
+        register(ListMembershipsTool)
+        register(CreateMembershipTool)
+        register(DeleteMembershipTool)
+        register(ListTagsTool)
 
         // --- Epics ---
         register(ListEpicsTool)
@@ -114,6 +121,9 @@ class TaigaToolRegistry(
         register(CreateEpicTool)
         register(UpdateEpicTool)
         register(DeleteEpicTool)
+        register(ListEpicUserStoriesTool)
+        register(LinkUserStoryToEpicTool)
+        register(UnlinkUserStoryFromEpicTool)
 
         // --- User Stories ---
         register(ListUserStoriesTool)
@@ -135,17 +145,47 @@ class TaigaToolRegistry(
         register(CreateIssueTool)
         register(UpdateIssueTool)
         register(DeleteIssueTool)
+        register(PromoteIssueToUserStoryTool)
 
         // --- Milestones (Sprints) ---
         register(ListMilestonesTool)
         register(GetMilestoneTool)
         register(CreateMilestoneTool)
+        register(UpdateMilestoneTool)
+        register(DeleteMilestoneTool)
+        register(GetMilestoneStatsTool)
 
         // --- Wiki ---
         register(ListWikiPagesTool)
         register(GetWikiPageTool)
         register(CreateWikiPageTool)
         register(UpdateWikiPageTool)
+        register(DeleteWikiPageTool)
+        register(ListWikiLinksTool)
+        register(CreateWikiLinkTool)
+        register(DeleteWikiLinkTool)
+
+        // --- Attachments ---
+        register(ListAttachmentsTool)
+        register(UploadAttachmentTool)
+        register(DeleteAttachmentTool)
+
+        // --- Custom Attributes ---
+        register(ListCustomAttributesTool)
+        register(CreateCustomAttributeTool)
+        register(DeleteCustomAttributeTool)
+        register(GetCustomAttributesValuesTool)
+        register(UpdateCustomAttributesValuesTool)
+
+        // --- Users ---
+        register(GetMeTool)
+        register(GetUserTool)
+
+        // --- Social & Engagement (Votes & Watchers) ---
+        register(UpvoteTool)
+        register(DownvoteTool)
+        register(WatchTool)
+        register(UnwatchTool)
 
         // --- Project Statuses / Metadata ---
         register(GetProjectStatusesTool)

@@ -117,6 +117,13 @@ class TaigaMcpServerTest {
         // Projects
         assertTrue(toolNames.contains("taiga_list_projects"))
         assertTrue(toolNames.contains("taiga_get_project"))
+        assertTrue(toolNames.contains("taiga_create_project"))
+        assertTrue(toolNames.contains("taiga_update_project"))
+        assertTrue(toolNames.contains("taiga_delete_project"))
+        assertTrue(toolNames.contains("taiga_list_memberships"))
+        assertTrue(toolNames.contains("taiga_create_membership"))
+        assertTrue(toolNames.contains("taiga_delete_membership"))
+        assertTrue(toolNames.contains("taiga_list_tags"))
 
         // User Stories
         assertTrue(toolNames.contains("taiga_list_user_stories"))
@@ -138,6 +145,9 @@ class TaigaMcpServerTest {
         assertTrue(toolNames.contains("taiga_create_epic"))
         assertTrue(toolNames.contains("taiga_update_epic"))
         assertTrue(toolNames.contains("taiga_delete_epic"))
+        assertTrue(toolNames.contains("taiga_list_epic_user_stories"))
+        assertTrue(toolNames.contains("taiga_link_user_story_to_epic"))
+        assertTrue(toolNames.contains("taiga_unlink_user_story_from_epic"))
 
         // Issues
         assertTrue(toolNames.contains("taiga_list_issues"))
@@ -145,15 +155,47 @@ class TaigaMcpServerTest {
         assertTrue(toolNames.contains("taiga_create_issue"))
         assertTrue(toolNames.contains("taiga_update_issue"))
         assertTrue(toolNames.contains("taiga_delete_issue"))
+        assertTrue(toolNames.contains("taiga_promote_issue_to_user_story"))
 
         // Milestones
         assertTrue(toolNames.contains("taiga_list_milestones"))
         assertTrue(toolNames.contains("taiga_get_milestone"))
         assertTrue(toolNames.contains("taiga_create_milestone"))
+        assertTrue(toolNames.contains("taiga_update_milestone"))
+        assertTrue(toolNames.contains("taiga_delete_milestone"))
+        assertTrue(toolNames.contains("taiga_get_milestone_stats"))
 
         // Wiki
         assertTrue(toolNames.contains("taiga_list_wiki_pages"))
         assertTrue(toolNames.contains("taiga_get_wiki_page"))
+        assertTrue(toolNames.contains("taiga_create_wiki_page"))
+        assertTrue(toolNames.contains("taiga_update_wiki_page"))
+        assertTrue(toolNames.contains("taiga_delete_wiki_page"))
+        assertTrue(toolNames.contains("taiga_list_wiki_links"))
+        assertTrue(toolNames.contains("taiga_create_wiki_link"))
+        assertTrue(toolNames.contains("taiga_delete_wiki_link"))
+
+        // Attachments
+        assertTrue(toolNames.contains("taiga_list_attachments"))
+        assertTrue(toolNames.contains("taiga_upload_attachment"))
+        assertTrue(toolNames.contains("taiga_delete_attachment"))
+
+        // Custom Attributes
+        assertTrue(toolNames.contains("taiga_list_custom_attributes"))
+        assertTrue(toolNames.contains("taiga_create_custom_attribute"))
+        assertTrue(toolNames.contains("taiga_delete_custom_attribute"))
+        assertTrue(toolNames.contains("taiga_get_custom_attributes_values"))
+        assertTrue(toolNames.contains("taiga_update_custom_attributes_values"))
+
+        // Users
+        assertTrue(toolNames.contains("taiga_get_me"))
+        assertTrue(toolNames.contains("taiga_get_user"))
+
+        // Social / Engagement
+        assertTrue(toolNames.contains("taiga_upvote"))
+        assertTrue(toolNames.contains("taiga_downvote"))
+        assertTrue(toolNames.contains("taiga_watch"))
+        assertTrue(toolNames.contains("taiga_unwatch"))
 
         // Collaboration, Search & Productivity
         assertTrue(toolNames.contains("taiga_search"))
