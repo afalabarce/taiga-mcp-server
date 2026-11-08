@@ -124,6 +124,64 @@ class TaigaMcpServerTest {
         assertTrue(toolNames.contains("taiga_create_membership"))
         assertTrue(toolNames.contains("taiga_delete_membership"))
         assertTrue(toolNames.contains("taiga_list_tags"))
+        assertTrue(toolNames.contains("taiga_duplicate_project"))
+        assertTrue(toolNames.contains("taiga_list_project_templates"))
+        assertTrue(toolNames.contains("taiga_export_project"))
+        assertTrue(toolNames.contains("taiga_export_csv"))
+        assertTrue(toolNames.contains("taiga_transfer_project_start"))
+        assertTrue(toolNames.contains("taiga_transfer_project_accept"))
+
+        // Swimlanes
+        assertTrue(toolNames.contains("taiga_list_swimlanes"))
+        assertTrue(toolNames.contains("taiga_get_swimlane"))
+        assertTrue(toolNames.contains("taiga_create_swimlane"))
+        assertTrue(toolNames.contains("taiga_update_swimlane"))
+        assertTrue(toolNames.contains("taiga_delete_swimlane"))
+        assertTrue(toolNames.contains("taiga_reorder_swimlanes"))
+        assertTrue(toolNames.contains("taiga_list_swimlane_userstory_statuses"))
+
+        // Due Dates
+        assertTrue(toolNames.contains("taiga_list_due_dates"))
+        assertTrue(toolNames.contains("taiga_get_due_date"))
+        assertTrue(toolNames.contains("taiga_create_due_date"))
+        assertTrue(toolNames.contains("taiga_update_due_date"))
+        assertTrue(toolNames.contains("taiga_delete_due_date"))
+
+        // Bulk Operations
+        assertTrue(toolNames.contains("taiga_bulk_create_user_stories"))
+        assertTrue(toolNames.contains("taiga_bulk_create_tasks"))
+        assertTrue(toolNames.contains("taiga_bulk_create_issues"))
+        assertTrue(toolNames.contains("taiga_bulk_create_epics"))
+        assertTrue(toolNames.contains("taiga_bulk_create_memberships"))
+        assertTrue(toolNames.contains("taiga_move_to_sprint"))
+        assertTrue(toolNames.contains("taiga_bulk_update_backlog_order"))
+        assertTrue(toolNames.contains("taiga_bulk_update_kanban_order"))
+        assertTrue(toolNames.contains("taiga_bulk_update_taskboard_order"))
+
+        // Webhooks
+        assertTrue(toolNames.contains("taiga_list_webhooks"))
+        assertTrue(toolNames.contains("taiga_get_webhook"))
+        assertTrue(toolNames.contains("taiga_create_webhook"))
+        assertTrue(toolNames.contains("taiga_update_webhook"))
+        assertTrue(toolNames.contains("taiga_delete_webhook"))
+        assertTrue(toolNames.contains("taiga_test_webhook"))
+        assertTrue(toolNames.contains("taiga_list_webhook_logs"))
+        assertTrue(toolNames.contains("taiga_resend_webhook"))
+
+        // Comment History
+        assertTrue(toolNames.contains("taiga_edit_comment"))
+        assertTrue(toolNames.contains("taiga_delete_comment"))
+        assertTrue(toolNames.contains("taiga_undelete_comment"))
+        assertTrue(toolNames.contains("taiga_get_comment_versions"))
+
+        // Web Notifications & Notify Policies
+        assertTrue(toolNames.contains("taiga_list_web_notifications"))
+        assertTrue(toolNames.contains("taiga_mark_web_notifications_read"))
+        assertTrue(toolNames.contains("taiga_list_notify_policies"))
+        assertTrue(toolNames.contains("taiga_update_notify_policy"))
+
+        // Timelines
+        assertTrue(toolNames.contains("taiga_get_timeline"))
 
         // User Stories
         assertTrue(toolNames.contains("taiga_list_user_stories"))
@@ -190,12 +248,18 @@ class TaigaMcpServerTest {
         // Users
         assertTrue(toolNames.contains("taiga_get_me"))
         assertTrue(toolNames.contains("taiga_get_user"))
+        assertTrue(toolNames.contains("taiga_get_user_contacts"))
+        assertTrue(toolNames.contains("taiga_get_user_liked"))
+        assertTrue(toolNames.contains("taiga_get_user_voted"))
+        assertTrue(toolNames.contains("taiga_get_user_watched"))
 
         // Social / Engagement
         assertTrue(toolNames.contains("taiga_upvote"))
         assertTrue(toolNames.contains("taiga_downvote"))
         assertTrue(toolNames.contains("taiga_watch"))
         assertTrue(toolNames.contains("taiga_unwatch"))
+        assertTrue(toolNames.contains("taiga_list_voters"))
+        assertTrue(toolNames.contains("taiga_list_watchers"))
 
         // Collaboration, Search & Productivity
         assertTrue(toolNames.contains("taiga_search"))

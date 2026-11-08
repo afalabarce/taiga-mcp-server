@@ -330,3 +330,101 @@ data class TaigaWikiLink(
     val order: Long? = null,
     val project: Long
 )
+
+@Serializable
+data class TaigaSwimlane(
+    val id: Long,
+    val name: String,
+    val project: Long,
+    val order: Long = 0
+)
+
+@Serializable
+data class TaigaDueDate(
+    val id: Long,
+    val name: String,
+    val color: String? = null,
+    @SerialName("days_to_due") val daysToDue: Int? = null,
+    @SerialName("by_default") val byDefault: Boolean = false,
+    val project: Long,
+    val order: Int = 0
+)
+
+@Serializable
+data class TaigaWebhook(
+    val id: Long,
+    val name: String,
+    val url: String,
+    val key: String? = null,
+    val project: Long
+)
+
+@Serializable
+data class TaigaWebhookLog(
+    val id: Long,
+    val webhook: Long,
+    val url: String,
+    val status: Int,
+    val duration: Double? = null,
+    val created: String? = null
+)
+
+@Serializable
+data class TaigaWebNotification(
+    val id: Long,
+    val type: String? = null,
+    val read: String? = null,
+    val data: JsonElement? = null,
+    val created: String? = null
+)
+
+@Serializable
+data class TaigaNotifyPolicy(
+    val id: Long,
+    val project: Long,
+    @SerialName("project_name") val projectName: String? = null,
+    @SerialName("notify_level") val notifyLevel: Int = 1
+)
+
+@Serializable
+data class TaigaProjectTemplate(
+    val id: Long,
+    val name: String,
+    val slug: String? = null,
+    val description: String? = null,
+    val order: Int = 0
+)
+
+@Serializable
+data class TaigaCommentVersion(
+    val id: String? = null,
+    val comment: String? = null,
+    @SerialName("comment_html") val commentHtml: String? = null,
+    val user: TaigaExtraInfo? = null,
+    val date: String? = null
+)
+
+@Serializable
+data class TaigaTimelineEntry(
+    val id: Long? = null,
+    @SerialName("content_type") val contentType: String? = null,
+    val eventType: String? = null,
+    val created: String? = null,
+    val data: JsonElement? = null
+)
+
+@Serializable
+data class TaigaVoter(
+    val id: Long,
+    val username: String,
+    @SerialName("full_name_display") val fullNameDisplay: String? = null,
+    val photo: String? = null
+)
+
+@Serializable
+data class TaigaWatcher(
+    val id: Long,
+    val username: String,
+    @SerialName("full_name_display") val fullNameDisplay: String? = null,
+    @SerialName("full_name") val fullName: String? = null
+)

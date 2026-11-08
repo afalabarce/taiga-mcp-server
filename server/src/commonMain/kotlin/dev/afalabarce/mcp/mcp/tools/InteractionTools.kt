@@ -104,3 +104,51 @@ object UnwatchTool : McpTool {
         return SchemaBuilder.successText("Stopped watching $type #$id.")
     }
 }
+
+object ListVotersTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_list_voters",
+        description = "List all voters for a user story, task, issue, or epic",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "type" to SchemaBuilder.stringProp("Target type: 'userstory', 'task', 'issue', or 'epic'"),
+                "id" to SchemaBuilder.intProp("Numeric ID of the item"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("type", "id")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val type = args["type"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'type'")
+        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
+
+        val voters = client.listVoters(type, id)
+        return SchemaBuilder.successJson(voters)
+    }
+}
+
+object ListWatchersTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_list_watchers",
+        description = "List all watchers for a user story, task, issue, epic, sprint, wiki, or project",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "type" to SchemaBuilder.stringProp("Target type: 'userstory', 'task', 'issue', 'epic', 'milestone', 'wiki', or 'project'"),
+                "id" to SchemaBuilder.intProp("Numeric ID of the resource"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("type", "id")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val type = args["type"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'type'")
+        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
+
+        val watchers = client.listWatchers(type, id)
+        return SchemaBuilder.successJson(watchers)
+    }
+}

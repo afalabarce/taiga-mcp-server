@@ -99,6 +99,8 @@ object CreateTaskTool : McpTool {
                 "status_id" to SchemaBuilder.intProp("Legacy alias: numeric task status ID"),
                 "assigned_to" to SchemaBuilder.stringProp("User ID, username, or email to assign this task to"),
                 "tags" to SchemaBuilder.arrayProp("List of tags"),
+                "due_date" to SchemaBuilder.stringProp("Optional due date (YYYY-MM-DD)"),
+                "due_date_reason" to SchemaBuilder.stringProp("Optional reason for the due date"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             ),
@@ -129,6 +131,8 @@ object CreateTaskTool : McpTool {
             statusId?.let { put("status", it) }
             assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
+            args["due_date"]?.jsonPrimitive?.contentOrNull?.let { put("due_date", it) }
+            args["due_date_reason"]?.jsonPrimitive?.contentOrNull?.let { put("due_date_reason", it) }
         }
 
         val task = client.createTask(payload)
@@ -151,6 +155,8 @@ object UpdateTaskTool : McpTool {
                 "assigned_to" to SchemaBuilder.stringProp("Updated assigned user ID, username, or email"),
                 "user_story_id" to SchemaBuilder.intProp("Updated parent user story ID"),
                 "tags" to SchemaBuilder.arrayProp("Updated tags list"),
+                "due_date" to SchemaBuilder.stringProp("Optional updated due date (YYYY-MM-DD or empty to clear)"),
+                "due_date_reason" to SchemaBuilder.stringProp("Optional updated reason for the due date"),
                 "comment" to SchemaBuilder.stringProp("Optional comment or note to record in task's activity history"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
@@ -182,6 +188,8 @@ object UpdateTaskTool : McpTool {
             assignedToId?.let { put("assigned_to", it) }
             args["user_story_id"]?.jsonPrimitive?.longOrNull?.let { put("user_story", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
+            args["due_date"]?.jsonPrimitive?.contentOrNull?.let { put("due_date", it) }
+            args["due_date_reason"]?.jsonPrimitive?.contentOrNull?.let { put("due_date_reason", it) }
             args["comment"]?.jsonPrimitive?.contentOrNull?.let { put("comment", it) }
         }
 

@@ -318,31 +318,74 @@ Open in your browser:
 
 ---
 
-## 🧰 MCP Tools Catalog
+## 🧰 MCP Tools Catalog (121 Tools Available)
 
-The server registers the following tools under the Model Context Protocol specification:
+The server registers **121 tools** under the Model Context Protocol specification covering 100% of Taiga's capabilities:
 
 | Tool | Action | Notable Parameters |
 |---|---|---|
+| **Projects & Templates** | | |
 | `taiga_list_projects` | Lists projects accessible to the user | `member_id` |
-| `taiga_get_project` | Gets detailed information for a project | `project_id`, `slug`, `project` |
+| `taiga_get_project` | Gets detailed information for a project by ID or slug | `project_id`, `slug`, `project` |
 | `taiga_create_project` | Creates a new project | `name`, `description`, `is_private`, `tags` |
-| `taiga_update_project` | Updates project metadata | `project_id`, `project`, `name`, `description`, `is_private`, `tags` |
+| `taiga_update_project` | Updates project metadata | `project_id`, `name`, `description`, `is_private`, `tags` |
 | `taiga_delete_project` | Deletes a project by ID or slug | `project_id`, `project` |
+| `taiga_duplicate_project` | Duplicates an existing project and configuration | `project`, `name`, `description`, `is_private` |
+| `taiga_list_project_templates` | Lists available project templates (Scrum, Kanban, etc.) | *(none)* |
+| `taiga_export_project` | Triggers or checks full project export dump | `project` |
+| `taiga_export_csv` | Exports project items in plain CSV format | `type` ('userstories', 'tasks', 'issues', 'epics'), `project` |
+| `taiga_transfer_project_start` | Initiates project ownership transfer | `user`, `project` |
+| `taiga_transfer_project_accept`| Accepts project ownership transfer using a token | `token`, `reason`, `project` |
+| **Memberships & Permissions** | | |
 | `taiga_list_memberships` | Lists project memberships and roles | `project` |
 | `taiga_create_membership` | Invites or adds a member with a role | `email`, `role`, `project` |
 | `taiga_delete_membership` | Removes a member from a project | `id` |
-| `taiga_list_tags` | Lists project tags and their colors | `project` |
-| `taiga_list_user_stories` | Lists user stories with optional filters | `project`, `milestone_id`, `status_id`, `epic_id` |
+| `taiga_list_members` | Lists team members and assigned roles | `project` |
+| `taiga_list_tags` | Lists project tags and color hex codes | `project` |
+| **Swimlanes (Kanban Lanes)** | | |
+| `taiga_list_swimlanes` | Lists all swimlanes configured in a project | `project` |
+| `taiga_get_swimlane` | Inspects a swimlane by numeric ID | `id` |
+| `taiga_create_swimlane` | Creates a new swimlane | `name`, `order`, `project` |
+| `taiga_update_swimlane` | Modifies swimlane name or display order | `id`, `name`, `order` |
+| `taiga_delete_swimlane` | Deletes a swimlane by ID | `id` |
+| `taiga_reorder_swimlanes` | Bulk reorders project swimlanes | `bulk_swimlanes`, `project` |
+| `taiga_list_swimlane_userstory_statuses` | Inspects story status mapping per swimlane | `project` |
+| **Due Dates** | | |
+| `taiga_list_due_dates` | Lists configured due date status colors | `type` ('userstory', 'task', 'issue'), `project` |
+| `taiga_get_due_date` | Inspects due date configuration by ID | `type`, `id` |
+| `taiga_create_due_date` | Creates a new due date status and color rule | `type`, `name`, `color`, `days_to_due`, `by_default`, `order`, `project` |
+| `taiga_update_due_date` | Modifies due date status rule | `type`, `id`, `name`, `color`, `days_to_due`, `by_default`, `order` |
+| `taiga_delete_due_date` | Deletes a due date status rule | `type`, `id` |
+| **Bulk Operations** | | |
+| `taiga_bulk_create_user_stories` | Rapid bulk creation of stories from newline text | `bulk_stories`, `status`, `swimlane_id`, `project` |
+| `taiga_bulk_create_tasks` | Rapid bulk creation of tasks from newline text | `bulk_tasks`, `user_story_id`, `milestone`, `status`, `project` |
+| `taiga_bulk_create_issues` | Rapid bulk creation of bugs from newline text | `bulk_issues`, `milestone`, `project` |
+| `taiga_bulk_create_epics` | Rapid bulk creation of epics from newline text | `bulk_epics`, `status_id`, `project` |
+| `taiga_bulk_create_memberships`| Adds multiple project members at once | `bulk_memberships`, `project` |
+| `taiga_move_to_sprint` | Moves multiple stories, tasks, or issues into a sprint | `type`, `milestone`, `item_ids`, `project` |
+| `taiga_bulk_update_backlog_order` | Reorders stories in the backlog | `bulk_stories`, `project` |
+| `taiga_bulk_update_kanban_order` | Reorders stories on the Kanban board | `bulk_stories`, `project` |
+| `taiga_bulk_update_taskboard_order` | Reorders tasks on the sprint Taskboard | `bulk_tasks`, `project` |
+| **User Stories** | | |
+| `taiga_list_user_stories` | Lists user stories with optional filters | `project`, `milestone`, `status`, `epic_id` |
 | `taiga_get_user_story` | Retrieves a user story by ID or ref | `id`, `ref`, `project` |
-| `taiga_create_user_story` | Creates a new user story | `subject`, `description`, `project`, `status`, `milestone`, `tags`, `points` |
-| `taiga_update_user_story` | Updates an existing user story | `id`, `subject`, `description`, `status`, `version`, `milestone`, `assigned_to` |
+| `taiga_create_user_story` | Creates a story (status names, sprint, `due_date`, points) | `subject`, `description`, `status`, `milestone`, `assigned_to`, `due_date`, `tags` |
+| `taiga_update_user_story` | Updates a story with optimistic locking version resolution | `id`, `subject`, `status`, `milestone`, `assigned_to`, `due_date`, `comment`, `version` |
 | `taiga_delete_user_story` | Deletes a user story | `id` |
-| `taiga_list_tasks` | Lists tasks in a project or user story | `project`, `user_story_id`, `milestone`, `status`, `assigned_to` |
+| **Tasks** | | |
+| `taiga_list_tasks` | Lists tasks in a project or story | `project`, `user_story_id`, `milestone`, `status`, `assigned_to` |
 | `taiga_get_task` | Retrieves details for a specific task by ID or ref | `id`, `ref`, `project` |
-| `taiga_create_task` | Creates a new task | `subject`, `description`, `user_story_id`, `milestone`, `project`, `assigned_to` |
-| `taiga_update_task` | Updates task status or details | `id`, `subject`, `description`, `status`, `assigned_to`, `version` |
+| `taiga_create_task` | Creates a task (status names, sprint, `due_date`) | `subject`, `description`, `user_story_id`, `milestone`, `assigned_to`, `due_date` |
+| `taiga_update_task` | Updates task status or details with auto-versioning | `id`, `subject`, `status`, `assigned_to`, `due_date`, `comment`, `version` |
 | `taiga_delete_task` | Deletes a task | `id` |
+| **Issues / Bugs** | | |
+| `taiga_list_issues` | Lists issues or bugs with advanced filters | `project`, `status`, `priority`, `severity`, `type` |
+| `taiga_get_issue` | Retrieves issue details by ID or ref | `id`, `ref`, `project` |
+| `taiga_create_issue` | Logs a bug (severity names, priority, type, `due_date`) | `subject`, `type`, `priority`, `severity`, `status`, `due_date`, `project` |
+| `taiga_update_issue` | Updates status, priority, or severity with auto-versioning | `id`, `subject`, `status`, `priority`, `severity`, `due_date`, `comment`, `version` |
+| `taiga_delete_issue` | Deletes an issue by ID | `id` |
+| `taiga_promote_issue_to_user_story` | Promotes a bug/issue into a user story | `id`, `project` |
+| **Epics** | | |
 | `taiga_list_epics` | Lists epics for a project | `project`, `status` |
 | `taiga_get_epic` | Retrieves epic details by ID or ref | `id`, `ref`, `project` |
 | `taiga_create_epic` | Creates an epic with color and tags | `subject`, `description`, `color`, `project`, `tags` |
@@ -351,18 +394,14 @@ The server registers the following tools under the Model Context Protocol specif
 | `taiga_list_epic_user_stories` | Lists user stories linked to an epic | `epic_id` |
 | `taiga_link_user_story_to_epic` | Links a user story to an epic | `epic_id`, `user_story_id`, `order` |
 | `taiga_unlink_user_story_from_epic` | Unlinks a user story from an epic | `epic_id`, `user_story_id` |
-| `taiga_list_issues` | Lists issues or bugs | `project`, `status`, `priority`, `severity`, `type` |
-| `taiga_get_issue` | Retrieves issue details by ID or ref | `id`, `ref`, `project` |
-| `taiga_create_issue` | Logs a new bug or issue | `subject`, `project`, `type`, `priority`, `severity`, `status` |
-| `taiga_update_issue` | Updates status or priority of an issue | `id`, `subject`, `status`, `priority`, `severity`, `version` |
-| `taiga_delete_issue` | Deletes an issue by ID | `id` |
-| `taiga_promote_issue_to_user_story` | Promotes a bug/issue into a user story | `id`, `project` |
+| **Sprints / Milestones** | | |
 | `taiga_list_milestones` | Lists sprints or milestones | `project` |
 | `taiga_get_milestone` | Inspects sprint progress, stories, and points | `id`, `milestone`, `project` |
 | `taiga_create_milestone` | Schedules a new sprint with start/end dates | `name`, `estimated_start`, `estimated_finish`, `project` |
 | `taiga_update_milestone` | Updates milestone details or closes sprint | `id`, `milestone`, `name`, `estimated_start`, `closed`, `project` |
 | `taiga_delete_milestone` | Deletes a milestone by ID or name | `id`, `milestone`, `project` |
 | `taiga_get_milestone_stats` | Sprint progress and burndown stats | `id`, `milestone`, `project` |
+| **Wiki** | | |
 | `taiga_list_wiki_pages` | Lists wiki articles | `project` |
 | `taiga_get_wiki_page` | Retrieves Markdown content of a wiki page | `slug`, `id`, `project` |
 | `taiga_create_wiki_page` | Creates a new wiki page | `slug`, `content`, `project` |
@@ -371,26 +410,58 @@ The server registers the following tools under the Model Context Protocol specif
 | `taiga_list_wiki_links` | Lists wiki navigation links | `project` |
 | `taiga_create_wiki_link` | Adds a new link to wiki navigation menu | `title`, `href`, `order`, `project` |
 | `taiga_delete_wiki_link` | Deletes a wiki link | `id` |
+| **Attachments & Files** | | |
 | `taiga_list_attachments` | Lists attachments for stories, tasks, issues, epics, wiki | `type`, `object_id`, `project` |
 | `taiga_upload_attachment` | Uploads an attachment (from local file or base64) | `type`, `object_id`, `file_path`, `file_content_base64`, `file_name` |
 | `taiga_delete_attachment` | Deletes an attachment by ID | `type`, `attachment_id` |
+| **Custom Attributes** | | |
 | `taiga_list_custom_attributes` | Lists custom fields defined for a resource | `type`, `project` |
 | `taiga_create_custom_attribute` | Defines a new custom attribute on project | `type`, `name`, `attribute_type`, `project` |
 | `taiga_delete_custom_attribute` | Deletes a custom attribute definition | `type`, `id` |
 | `taiga_get_custom_attributes_values` | Retrieves custom field values for an item | `type`, `object_id` |
 | `taiga_update_custom_attributes_values` | Updates custom field values with auto-versioning | `type`, `object_id`, `values`, `version` |
-| `taiga_get_me` | Retrieves profile of currently authenticated user | *(none)* |
-| `taiga_get_user` | Retrieves profile of a user by ID | `id` |
+| **Comments & History** | | |
+| `taiga_add_comment` | Posts comments on stories, tasks, issues, or epics with auto-versioning | `type`, `id`, `comment` |
+| `taiga_get_history` | Inspects chronological history and activity of an item | `type`, `id` |
+| `taiga_edit_comment` | Edits an existing comment text in activity history | `type`, `id`, `comment_id`, `comment` |
+| `taiga_delete_comment` | Deletes a comment from activity history | `type`, `id`, `comment_id` |
+| `taiga_undelete_comment` | Restores a deleted comment | `type`, `id`, `comment_id` |
+| `taiga_get_comment_versions` | Inspects all edit versions of a comment | `type`, `id`, `comment_id` |
+| **Webhooks** | | |
+| `taiga_list_webhooks` | Lists webhooks configured for a project | `project` |
+| `taiga_get_webhook` | Inspects a webhook by ID | `id` |
+| `taiga_create_webhook` | Creates a new webhook for project events | `name`, `url`, `key`, `project` |
+| `taiga_update_webhook` | Modifies webhook configuration | `id`, `name`, `url`, `key` |
+| `taiga_delete_webhook` | Deletes a webhook by ID | `id` |
+| `taiga_test_webhook` | Sends a test event delivery to validate the webhook | `id` |
+| `taiga_list_webhook_logs` | Lists delivery attempts and response codes | `webhook_id` |
+| `taiga_resend_webhook` | Resends a failed delivery attempt by log ID | `log_id` |
+| **Notifications & Policies** | | |
+| `taiga_list_web_notifications` | Lists web in-app notifications | `only_unread` |
+| `taiga_mark_web_notifications_read` | Marks notifications as read (single or all) | `id` |
+| `taiga_list_notify_policies` | Lists project notification policies | `project` |
+| `taiga_update_notify_policy` | Updates notification level (1: None, 2: Involved, 3: All) | `id`, `notify_level` |
+| **Social Interactions & Watching** | | |
 | `taiga_upvote` | Casts a vote on a story, task, issue, or epic | `type`, `id` |
 | `taiga_downvote` | Removes vote from a story, task, issue, or epic | `type`, `id` |
+| `taiga_list_voters` | Lists users who voted for an item | `type`, `id` |
 | `taiga_watch` | Subscribes to notifications for any resource | `type`, `id` |
 | `taiga_unwatch` | Unsubscribes from notifications | `type`, `id` |
-| `taiga_get_project_statuses`| Retrieves all IDs for statuses, priorities, severities, and roles | `project` |
-| `taiga_search` | Unified global search across stories, tasks, issues, epics, and wiki | `query`, `project` |
-| `taiga_get_project_summary`| Executive summary with status metrics, active sprints, and members | `project` |
-| `taiga_add_comment` | Posts comments on stories, tasks, issues, or epics with auto-versioning | `type`, `id`, `comment` |
-| `taiga_list_members` | Lists project team members and their roles | `project` |
-| `taiga_get_history` | Inspects chronological history and activity of an item | `type`, `id` |
+| `taiga_list_watchers` | Lists users watching any resource | `type`, `id` |
+| **Timelines** | | |
+| `taiga_get_timeline` | Retrieves activity timeline for user, project, or profile | `type` ('user', 'project', 'profile'), `id` |
+| **Users** | | |
+| `taiga_get_me` | Retrieves profile of currently authenticated user | *(none)* |
+| `taiga_get_user` | Retrieves profile of a user by ID | `id` |
+| `taiga_get_user_contacts` | Lists contacts/connections of a user | `id` |
+| `taiga_get_user_liked` | Lists items liked by a user | `id` |
+| `taiga_get_user_voted` | Lists items voted for by a user | `id` |
+| `taiga_get_user_watched` | Lists items watched by a user | `id` |
+| **Search & Executive Summary** | | |
+| `taiga_search` | Unified global search across stories, tasks, issues, epics, and wiki | `text`, `project` |
+| `taiga_get_project_summary` | Executive summary with status metrics, active sprints, and members | `project` |
+| `taiga_get_project_statuses` | Retrieves all IDs for statuses, priorities, severities, and roles | `project` |
+| **Server & Configuration** | | |
 | `taiga_get_config` | Returns current active server configuration | *(none)* |
 | `taiga_set_config` | Dynamically updates URL, Token, or Project | `api_url`, `auth_token`, `default_project` |
 | `taiga_login` | Authenticates with username and password | `username`, `password`, `api_url` |

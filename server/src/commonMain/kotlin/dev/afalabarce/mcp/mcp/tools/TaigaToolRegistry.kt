@@ -114,6 +114,64 @@ class TaigaToolRegistry(
         register(CreateMembershipTool)
         register(DeleteMembershipTool)
         register(ListTagsTool)
+        register(DuplicateProjectTool)
+        register(ListProjectTemplatesTool)
+        register(ExportProjectTool)
+        register(ExportCsvTool)
+        register(TransferProjectStartTool)
+        register(TransferProjectAcceptTool)
+
+        // --- Swimlanes ---
+        register(ListSwimlanesTool)
+        register(GetSwimlaneTool)
+        register(CreateSwimlaneTool)
+        register(UpdateSwimlaneTool)
+        register(DeleteSwimlaneTool)
+        register(ReorderSwimlanesTool)
+        register(ListSwimlaneUserStoryStatusesTool)
+
+        // --- Due Dates ---
+        register(ListDueDatesTool)
+        register(GetDueDateTool)
+        register(CreateDueDateTool)
+        register(UpdateDueDateTool)
+        register(DeleteDueDateTool)
+
+        // --- Bulk Operations ---
+        register(BulkCreateUserStoriesTool)
+        register(BulkCreateTasksTool)
+        register(BulkCreateIssuesTool)
+        register(BulkCreateEpicsTool)
+        register(BulkCreateMembershipsTool)
+        register(MoveToSprintTool)
+        register(BulkUpdateBacklogOrderTool)
+        register(BulkUpdateKanbanOrderTool)
+        register(BulkUpdateTaskboardOrderTool)
+
+        // --- Webhooks ---
+        register(ListWebhooksTool)
+        register(GetWebhookTool)
+        register(CreateWebhookTool)
+        register(UpdateWebhookTool)
+        register(DeleteWebhookTool)
+        register(TestWebhookTool)
+        register(ListWebhookLogsTool)
+        register(ResendWebhookTool)
+
+        // --- Comment History ---
+        register(EditCommentTool)
+        register(DeleteCommentTool)
+        register(UndeleteCommentTool)
+        register(GetCommentVersionsTool)
+
+        // --- Web Notifications & Notify Policies ---
+        register(ListWebNotificationsTool)
+        register(MarkWebNotificationsReadTool)
+        register(ListNotifyPoliciesTool)
+        register(UpdateNotifyPolicyTool)
+
+        // --- Timelines ---
+        register(GetTimelineTool)
 
         // --- Epics ---
         register(ListEpicsTool)
@@ -180,12 +238,18 @@ class TaigaToolRegistry(
         // --- Users ---
         register(GetMeTool)
         register(GetUserTool)
+        register(GetUserContactsTool)
+        register(GetUserLikedTool)
+        register(GetUserVotedTool)
+        register(GetUserWatchedTool)
 
         // --- Social & Engagement (Votes & Watchers) ---
         register(UpvoteTool)
         register(DownvoteTool)
         register(WatchTool)
         register(UnwatchTool)
+        register(ListVotersTool)
+        register(ListWatchersTool)
 
         // --- Project Statuses / Metadata ---
         register(GetProjectStatusesTool)

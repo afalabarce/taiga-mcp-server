@@ -268,3 +268,145 @@ object ListTagsTool : McpTool {
         return SchemaBuilder.successJson(tags)
     }
 }
+
+object DuplicateProjectTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_duplicate_project",
+        description = "Duplicate an existing Taiga project including its configuration",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project" to SchemaBuilder.stringProp("Source project ID or slug (defaults to configured project)"),
+                "name" to SchemaBuilder.stringProp("Name of the new duplicated project"),
+                "description" to SchemaBuilder.stringProp("Optional description of the new project"),
+                "is_private" to SchemaBuilder.booleanProp("Whether the new project is private"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("name")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+        val name = args["name"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'name'")
+        val description = args["description"]?.jsonPrimitive?.contentOrNull
+        val isPrivate = args["is_private"]?.jsonPrimitive?.booleanOrNull
+
+        val duplicated = client.duplicateProject(projectId, name, description, isPrivate)
+        return SchemaBuilder.successJson(duplicated)
+    }
+}
+
+object ListProjectTemplatesTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_list_project_templates",
+        description = "List all available project templates in Taiga",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val templates = client.listProjectTemplates()
+        return SchemaBuilder.successJson(templates)
+    }
+}
+
+object ExportProjectTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_export_project",
+        description = "Schedule or trigger an export dump of a Taiga project",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            )
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+        val exportResult = client.exportProject(projectId)
+        return SchemaBuilder.successJson(exportResult)
+    }
+}
+
+object ExportCsvTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_export_csv",
+        description = "Export user stories, tasks, issues, or epics of a project in CSV format",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "type" to SchemaBuilder.stringProp("Resource type to export: 'userstories', 'tasks', 'issues', or 'epics'"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("type")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val type = args["type"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'type'")
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+        val csv = client.exportCsv(type, projectId)
+        return SchemaBuilder.successText(csv)
+    }
+}
+
+object TransferProjectStartTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_transfer_project_start",
+        description = "Initiate transferring project ownership to another user",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "user" to SchemaBuilder.intProp("Numeric ID of the target user to transfer ownership to"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("user")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+        val user = args["user"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'user'")
+        val result = client.transferProjectStart(projectId, user)
+        return SchemaBuilder.successJson(result)
+    }
+}
+
+object TransferProjectAcceptTool : McpTool {
+    override val definition = McpToolDefinition(
+        name = "taiga_transfer_project_accept",
+        description = "Accept transferring project ownership using the transfer token",
+        inputSchema = SchemaBuilder.objectSchema(
+            properties = mapOf(
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
+                "token" to SchemaBuilder.stringProp("The transfer token received"),
+                "reason" to SchemaBuilder.stringProp("Optional reason or rejection notice"),
+                "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
+                "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
+            ),
+            required = listOf("token")
+        )
+    )
+
+    override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+        val token = args["token"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'token'")
+        val reason = args["reason"]?.jsonPrimitive?.contentOrNull
+        val result = client.transferProjectAccept(projectId, token, reason)
+        return SchemaBuilder.successJson(result)
+    }
+}

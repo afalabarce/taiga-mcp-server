@@ -96,6 +96,8 @@ object CreateUserStoryTool : McpTool {
                 "assigned_to" to SchemaBuilder.stringProp("User ID, username, or email to assign this story to"),
                 "tags" to SchemaBuilder.arrayProp("List of tags (e.g. ['frontend', 'auth'])"),
                 "points" to SchemaBuilder.objectProp("Map of role IDs to point IDs for story points (e.g. {\"1\": 2})"),
+                "due_date" to SchemaBuilder.stringProp("Optional due date (YYYY-MM-DD)"),
+                "due_date_reason" to SchemaBuilder.stringProp("Optional reason for the due date"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             ),
@@ -126,6 +128,8 @@ object CreateUserStoryTool : McpTool {
             assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
             args["points"]?.let { if (it is JsonObject) put("points", it) }
+            args["due_date"]?.jsonPrimitive?.contentOrNull?.let { put("due_date", it) }
+            args["due_date_reason"]?.jsonPrimitive?.contentOrNull?.let { put("due_date_reason", it) }
         }
 
         val story = client.createUserStory(payload)
@@ -150,6 +154,8 @@ object UpdateUserStoryTool : McpTool {
                 "assigned_to" to SchemaBuilder.stringProp("Updated assigned user ID, username, or email"),
                 "tags" to SchemaBuilder.arrayProp("Updated tags list"),
                 "points" to SchemaBuilder.objectProp("Updated map of role IDs to point IDs for story points"),
+                "due_date" to SchemaBuilder.stringProp("Optional updated due date (YYYY-MM-DD or empty to clear)"),
+                "due_date_reason" to SchemaBuilder.stringProp("Optional updated reason for the due date"),
                 "comment" to SchemaBuilder.stringProp("Optional comment or note to record in the story's activity history"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
@@ -185,6 +191,8 @@ object UpdateUserStoryTool : McpTool {
             assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
             args["points"]?.let { if (it is JsonObject) put("points", it) }
+            args["due_date"]?.jsonPrimitive?.contentOrNull?.let { put("due_date", it) }
+            args["due_date_reason"]?.jsonPrimitive?.contentOrNull?.let { put("due_date_reason", it) }
             args["comment"]?.jsonPrimitive?.contentOrNull?.let { put("comment", it) }
         }
 
