@@ -220,9 +220,59 @@ data class TaigaProjectStatuses(
     val userStoryStatuses: List<TaigaStatus> = emptyList(),
     val taskStatuses: List<TaigaStatus> = emptyList(),
     val issueStatuses: List<TaigaStatus> = emptyList(),
+    val epicStatuses: List<TaigaStatus> = emptyList(),
     val priorities: List<TaigaPriority> = emptyList(),
     val severities: List<TaigaSeverity> = emptyList(),
     val issueTypes: List<TaigaIssueType> = emptyList(),
     val roles: List<TaigaRole> = emptyList(),
     val points: List<TaigaPoint> = emptyList()
+)
+
+@Serializable
+data class TaigaSearchResult(
+    val count: Int = 0,
+    val epics: List<TaigaEpic> = emptyList(),
+    @SerialName("userstories") val userStories: List<TaigaUserStory> = emptyList(),
+    val tasks: List<TaigaTask> = emptyList(),
+    val issues: List<TaigaIssue> = emptyList(),
+    @SerialName("wikipages") val wikiPages: List<TaigaWikiPage> = emptyList()
+)
+
+@Serializable
+data class TaigaMembership(
+    val id: Long,
+    val user: Long? = null,
+    @SerialName("user_email") val userEmail: String? = null,
+    @SerialName("full_name") val fullName: String? = null,
+    @SerialName("role_name") val roleName: String? = null,
+    val role: Long? = null,
+    @SerialName("is_owner") val isOwner: Boolean = false,
+    val color: String? = null,
+    @SerialName("project_name") val projectName: String? = null
+)
+
+@Serializable
+data class TaigaHistoryEntry(
+    val id: String? = null,
+    @SerialName("user") val user: TaigaExtraInfo? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    val comment: String? = null,
+    @SerialName("comment_html") val commentHtml: String? = null,
+    @SerialName("diff") val diff: JsonElement? = null,
+    val values: JsonElement? = null
+)
+
+@Serializable
+data class TaigaProjectSummary(
+    val id: Long,
+    val name: String,
+    val slug: String,
+    val description: String? = null,
+    val totalMilestones: Int = 0,
+    val totalStoryPoints: Double? = null,
+    val activeSprints: List<String> = emptyList(),
+    val userStoryCountByStatus: Map<String, Int> = emptyMap(),
+    val taskCountByStatus: Map<String, Int> = emptyMap(),
+    val issueCountByStatus: Map<String, Int> = emptyMap(),
+    val members: List<String> = emptyList()
 )

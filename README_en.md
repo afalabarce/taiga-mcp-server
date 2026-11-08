@@ -354,12 +354,17 @@ The server registers the following tools under the Model Context Protocol specif
 | `taiga_create_wiki_page` | Creates a new wiki page | `slug`, `content`, `project` |
 | `taiga_update_wiki_page` | Updates content of a wiki page | `id`, `content`, `version` |
 | `taiga_get_project_statuses`| Retrieves all IDs for statuses, priorities, and types | `project` |
+| `taiga_search` | Unified global search across stories, tasks, issues, epics, and wiki | `query`, `project` |
+| `taiga_get_project_summary`| Executive summary with status metrics, active sprints, and members | `project` |
+| `taiga_add_comment` | Posts comments on stories, tasks, issues, or epics with auto-versioning | `type`, `id`, `comment` |
+| `taiga_list_members` | Lists project team members and their roles | `project` |
+| `taiga_get_history` | Inspects chronological history and activity of an item | `type`, `id` |
 | `taiga_get_config` | Returns current active server configuration | *(none)* |
 | `taiga_set_config` | Dynamically updates URL, Token, or Project | `api_url`, `auth_token`, `default_project` |
 | `taiga_login` | Authenticates with username and password | `username`, `password`, `api_url` |
 | `taiga_test_connection` | Tests connectivity with Taiga instance | *(none)* |
 
-*Note: All tools support optional `api_url`, `auth_token`, and `project` arguments to perform ad-hoc operations against different instances or projects without changing global configuration.*
+*Note: All tools support human-readable names for statuses (`status`), sprints (`milestone`), priorities, severities, and assignees (`assigned_to`), automatic optimistic locking version resolution (`version`), and optional `api_url`, `auth_token`, and `project` arguments.*
 
 ---
 

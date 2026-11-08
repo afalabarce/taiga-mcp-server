@@ -21,14 +21,18 @@ import io.ktor.serialization.kotlinx.json.json
 import dev.afalabarce.mcp.config.TaigaConfig
 import dev.afalabarce.mcp.taiga.model.TaigaAuthResponse
 import dev.afalabarce.mcp.taiga.model.TaigaEpic
+import dev.afalabarce.mcp.taiga.model.TaigaHistoryEntry
 import dev.afalabarce.mcp.taiga.model.TaigaIssue
 import dev.afalabarce.mcp.taiga.model.TaigaIssueType
+import dev.afalabarce.mcp.taiga.model.TaigaMembership
 import dev.afalabarce.mcp.taiga.model.TaigaMilestone
 import dev.afalabarce.mcp.taiga.model.TaigaPriority
 import dev.afalabarce.mcp.taiga.model.TaigaProject
 import dev.afalabarce.mcp.taiga.model.TaigaProjectStatuses
+import dev.afalabarce.mcp.taiga.model.TaigaProjectSummary
 import dev.afalabarce.mcp.taiga.model.TaigaPoint
 import dev.afalabarce.mcp.taiga.model.TaigaRole
+import dev.afalabarce.mcp.taiga.model.TaigaSearchResult
 import dev.afalabarce.mcp.taiga.model.TaigaSeverity
 import dev.afalabarce.mcp.taiga.model.TaigaStatus
 import dev.afalabarce.mcp.taiga.model.TaigaTask
@@ -384,6 +388,14 @@ class TaigaClient(
     }
 
     // --- Wiki ---
+    suspend fun getWikiPage(id: Long): TaigaWikiPage {
+        val response = httpClient.get("$baseUrl/api/v1/wiki/$id") {
+            authenticatedRequest(this)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<TaigaWikiPage>(text)
+    }
+
     suspend fun listWikiPages(projectId: Long? = null): List<TaigaWikiPage> {
         val pid = projectId ?: resolveProjectId()
         val response = httpClient.get("$baseUrl/api/v1/wiki") {
@@ -506,6 +518,119 @@ class TaigaClient(
         return json.decodeFromString<List<TaigaPoint>>(text)
     }
 
+    suspend fun getEpicStatuses(projectId: Long? = null): List<TaigaStatus> {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/epic-statuses") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaStatus>>(text)
+    }
+
+    suspend fun listMemberships(projectId: Long? = null): List<TaigaMembership> {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/memberships") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaMembership>>(text)
+    }
+
+    suspend fun search(projectId: Long? = null, text: String): TaigaSearchResult {
+        val pid = projectId ?: resolveProjectId()
+        val response = httpClient.get("$baseUrl/api/v1/search") {
+            authenticatedRequest(this)
+            parameter("project", pid)
+            parameter("text", text)
+        }
+        val responseText = handleResponse(response)
+        return json.decodeFromString<TaigaSearchResult>(responseText)
+    }
+
+    suspend fun getHistory(type: String, id: Long): List<TaigaHistoryEntry> {
+        val normalizedType = when (type.lowercase().trim()) {
+            "user_story", "userstory", "story" -> "userstory"
+            "task" -> "task"
+            "issue", "bug" -> "issue"
+            "epic" -> "epic"
+            else -> throw IllegalArgumentException("Unsupported type '$type'. Supported types: user_story, task, issue, epic")
+        }
+        val response = httpClient.get("$baseUrl/api/v1/history/$normalizedType/$id") {
+            authenticatedRequest(this)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<List<TaigaHistoryEntry>>(text)
+    }
+
+    suspend fun addComment(type: String, id: Long, comment: String): JsonObject {
+        val normalizedType = when (type.lowercase().trim()) {
+            "user_story", "userstory", "story" -> "userstories"
+            "task" -> "tasks"
+            "issue", "bug" -> "issues"
+            "epic" -> "epics"
+            else -> throw IllegalArgumentException("Unsupported type '$type'. Supported types: user_story, task, issue, epic")
+        }
+
+        val version = when (normalizedType) {
+            "userstories" -> getUserStory(id).version
+            "tasks" -> getTask(id).version
+            "issues" -> getIssue(id).version
+            "epics" -> getEpic(id).version
+            else -> 1
+        }
+
+        val payload = buildJsonObject {
+            put("version", version)
+            put("comment", comment)
+        }
+
+        val response = httpClient.patch("$baseUrl/api/v1/$normalizedType/$id") {
+            authenticatedRequest(this)
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }
+        val text = handleResponse(response)
+        return json.decodeFromString<JsonObject>(text)
+    }
+
+    suspend fun getProjectSummary(projectId: Long? = null): TaigaProjectSummary {
+        val pid = projectId ?: resolveProjectId()
+        val project = getProject(pid)
+        val milestones = runCatching { listMilestones(pid) }.getOrDefault(emptyList())
+        val userStories = runCatching { listUserStories(pid) }.getOrDefault(emptyList())
+        val tasks = runCatching { listTasks(pid) }.getOrDefault(emptyList())
+        val issues = runCatching { listIssues(pid) }.getOrDefault(emptyList())
+        val memberships = runCatching { listMemberships(pid) }.getOrDefault(emptyList())
+        val statuses = runCatching { getAllProjectStatuses(pid) }.getOrNull()
+
+        val storyStatusMap = statuses?.userStoryStatuses?.associate { it.id to it.name } ?: emptyMap()
+        val taskStatusMap = statuses?.taskStatuses?.associate { it.id to it.name } ?: emptyMap()
+        val issueStatusMap = statuses?.issueStatuses?.associate { it.id to it.name } ?: emptyMap()
+
+        val storyCounts = userStories.groupingBy { storyStatusMap[it.status] ?: "ID ${it.status}" }.eachCount()
+        val taskCounts = tasks.groupingBy { taskStatusMap[it.status] ?: "ID ${it.status}" }.eachCount()
+        val issueCounts = issues.groupingBy { issueStatusMap[it.status] ?: "ID ${it.status}" }.eachCount()
+
+        val activeSprints = milestones.filter { !it.closed }.map { "${it.name} (ID: ${it.id}, slug: ${it.slug})" }
+        val memberNames = memberships.mapNotNull { it.fullName?.takeIf { n -> n.isNotBlank() } ?: it.userEmail ?: it.roleName }
+
+        return TaigaProjectSummary(
+            id = project.id,
+            name = project.name,
+            slug = project.slug,
+            description = project.description,
+            totalMilestones = project.totalMilestones ?: milestones.size,
+            totalStoryPoints = project.totalStoryPoints,
+            activeSprints = activeSprints,
+            userStoryCountByStatus = storyCounts,
+            taskCountByStatus = taskCounts,
+            issueCountByStatus = issueCounts,
+            members = memberNames
+        )
+    }
+
     suspend fun getAllProjectStatuses(projectId: Long? = null): TaigaProjectStatuses {
         val pid = projectId ?: resolveProjectId()
         return TaigaProjectStatuses(
@@ -513,6 +638,7 @@ class TaigaClient(
             userStoryStatuses = getUserStoryStatuses(pid),
             taskStatuses = getTaskStatuses(pid),
             issueStatuses = getIssueStatuses(pid),
+            epicStatuses = runCatching { getEpicStatuses(pid) }.getOrDefault(emptyList()),
             priorities = getPriorities(pid),
             severities = getSeverities(pid),
             issueTypes = getIssueTypes(pid),

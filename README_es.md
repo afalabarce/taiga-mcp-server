@@ -353,12 +353,17 @@ El servidor registra las siguientes herramientas bajo la especificación Model C
 | `taiga_create_wiki_page` | Crea una nueva página wiki | `slug`, `content`, `project` |
 | `taiga_update_wiki_page` | Actualiza el texto de una página wiki | `id`, `content`, `version` |
 | `taiga_get_project_statuses`| Obtiene todos los IDs de estados, prioridades y tipos | `project` |
+| `taiga_search` | Búsqueda global de texto en historias, tareas, bugs, epics y wiki | `query`, `project` |
+| `taiga_get_project_summary`| Resumen ejecutivo con métricas de estados, sprints activos y miembros | `project` |
+| `taiga_add_comment` | Publica comentarios en historias, tareas, bugs o epics con auto-versión | `type`, `id`, `comment` |
+| `taiga_list_members` | Lista los miembros del equipo y sus roles | `project` |
+| `taiga_get_history` | Consulta el historial cronológico y actividad de un elemento | `type`, `id` |
 | `taiga_get_config` | Consulta la configuración activa del servidor | *(ninguno)* |
 | `taiga_set_config` | Modifica dinámicamente URL, Token o Proyecto | `api_url`, `auth_token`, `default_project` |
 | `taiga_login` | Autentica con usuario y contraseña | `username`, `password`, `api_url` |
 | `taiga_test_connection` | Comprueba la conectividad con Taiga | *(ninguno)* |
 
-*Nota: Todas las herramientas soportan los parámetros opcionales `api_url`, `auth_token` y `project` para realizar consultas puntuales sobre instancias o proyectos diferentes al configurado globalmente.*
+*Nota: Todas las herramientas soportan nombres legibles para estados (`status`), sprints (`milestone`), prioridades, severidades y asignaciones (`assigned_to`), además de resolución automática de versión concurrente (`version`) y parámetros opcionales `api_url`, `auth_token` y `project`.*
 
 ---
 

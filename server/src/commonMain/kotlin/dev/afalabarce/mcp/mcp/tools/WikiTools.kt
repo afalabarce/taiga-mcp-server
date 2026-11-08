@@ -36,23 +36,31 @@ object ListWikiPagesTool : McpTool {
 object GetWikiPageTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_get_wiki_page",
-        description = "Get content and metadata of a wiki page by slug",
+        description = "Get detailed content of a wiki page by slug or numeric ID",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "slug" to SchemaBuilder.stringProp("The slug of the wiki page (e.g. 'home')"),
+                "id" to SchemaBuilder.intProp("Optional numeric ID of the wiki page (if slug is not provided)"),
                 "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
-            ),
-            required = listOf("slug")
+            )
         )
     )
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
-        val slug = args["slug"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'slug'")
-        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
-        val projectId = client.resolveProjectId(projectParam)
-        val page = client.getWikiPageBySlug(projectId, slug)
+        val slug = args["slug"]?.jsonPrimitive?.contentOrNull
+        val id = args["id"]?.jsonPrimitive?.longOrNull
+
+        val page = when {
+            slug != null -> {
+                val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+                val projectId = client.resolveProjectId(projectParam)
+                client.getWikiPageBySlug(projectId, slug)
+            }
+            id != null -> client.getWikiPage(id)
+            else -> throw IllegalArgumentException("Either 'slug' or 'id' must be provided")
+        }
         return SchemaBuilder.successJson(page)
     }
 }
@@ -75,7 +83,7 @@ object CreateWikiPageTool : McpTool {
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
         val slug = args["slug"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'slug'")
-        val content = args["content"]?.jsonPrimitive?.contentOrNull ?: ""
+        val content = args["content"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'content'")
         val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
         val projectId = client.resolveProjectId(projectParam)
 
@@ -93,23 +101,25 @@ object CreateWikiPageTool : McpTool {
 object UpdateWikiPageTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_update_wiki_page",
-        description = "Update the content of an existing wiki page",
+        description = "Update the content of an existing wiki page. Version concurrency is automatically handled if omitted.",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "id" to SchemaBuilder.intProp("Numeric ID of the wiki page"),
                 "content" to SchemaBuilder.stringProp("Updated markdown content"),
-                "version" to SchemaBuilder.intProp("Current version of the wiki page"),
+                "version" to SchemaBuilder.intProp("Optional current version of the wiki page (auto-resolved if omitted)"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             ),
-            required = listOf("id", "content", "version")
+            required = listOf("id", "content")
         )
     )
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
         val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
         val content = args["content"]?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException("Missing required parameter 'content'")
-        val version = args["version"]?.jsonPrimitive?.intOrNull ?: 1
+        val version = args["version"]?.jsonPrimitive?.intOrNull ?: run {
+            client.getWikiPage(id).version
+        }
 
         val payload = buildJsonObject {
             put("content", content)

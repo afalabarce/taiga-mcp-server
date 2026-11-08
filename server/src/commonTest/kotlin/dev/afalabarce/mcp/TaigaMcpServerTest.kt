@@ -155,6 +155,13 @@ class TaigaMcpServerTest {
         assertTrue(toolNames.contains("taiga_list_wiki_pages"))
         assertTrue(toolNames.contains("taiga_get_wiki_page"))
 
+        // Collaboration, Search & Productivity
+        assertTrue(toolNames.contains("taiga_search"))
+        assertTrue(toolNames.contains("taiga_get_project_summary"))
+        assertTrue(toolNames.contains("taiga_add_comment"))
+        assertTrue(toolNames.contains("taiga_list_members"))
+        assertTrue(toolNames.contains("taiga_get_history"))
+
         // Metadata
         assertTrue(toolNames.contains("taiga_get_project_statuses"))
 
@@ -568,5 +575,47 @@ class TaigaMcpServerTest {
             setBody(pingPayload)
         }
         assertEquals(HttpStatusCode.OK, queryResp.status)
+    }
+
+    @Test
+    fun testEnhancedToolSchemasAndParameters() = runBlocking {
+        val configManager = ConfigManager()
+        val clientFactory = TaigaClientFactory(configManager)
+        val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
+
+        // Verify taiga_create_user_story accepts human-readable status, milestone, assigned_to
+        val createUserStoryTool = toolRegistry.getTool("taiga_create_user_story")
+        assertNotNull(createUserStoryTool)
+        val createProps = createUserStoryTool.definition.inputSchema["properties"]?.jsonObject
+        assertNotNull(createProps)
+        assertTrue(createProps.containsKey("status"))
+        assertTrue(createProps.containsKey("milestone"))
+        assertTrue(createProps.containsKey("assigned_to"))
+
+        // Verify taiga_update_user_story has comment and version is not strictly required
+        val updateStoryTool = toolRegistry.getTool("taiga_update_user_story")
+        assertNotNull(updateStoryTool)
+        val updateProps = updateStoryTool.definition.inputSchema["properties"]?.jsonObject
+        assertNotNull(updateProps)
+        assertTrue(updateProps.containsKey("comment"))
+        assertTrue(updateProps.containsKey("status"))
+
+        // Verify taiga_search tool exists and requires query
+        val searchTool = toolRegistry.getTool("taiga_search")
+        assertNotNull(searchTool)
+        val searchRequired = searchTool.definition.inputSchema["required"]?.jsonArray
+        assertNotNull(searchRequired)
+        assertTrue(searchRequired.any { it.jsonPrimitive.content == "query" })
+
+        // Verify taiga_get_project_summary tool
+        val summaryTool = toolRegistry.getTool("taiga_get_project_summary")
+        assertNotNull(summaryTool)
+
+        // Verify taiga_add_comment tool
+        val commentTool = toolRegistry.getTool("taiga_add_comment")
+        assertNotNull(commentTool)
+        val commentRequired = commentTool.definition.inputSchema["required"]?.jsonArray
+        assertNotNull(commentRequired)
+        assertTrue(commentRequired.any { it.jsonPrimitive.content == "comment" })
     }
 }

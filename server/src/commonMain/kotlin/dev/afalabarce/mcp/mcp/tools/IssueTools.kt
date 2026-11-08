@@ -16,14 +16,18 @@ import kotlinx.serialization.json.put
 object ListIssuesTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_list_issues",
-        description = "List issues in a Taiga project, with filters for status, priority, severity, or type",
+        description = "List issues in a Taiga project, with filters for status, priority, severity, or type (names or numeric IDs accepted)",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
-                "status_id" to SchemaBuilder.intProp("Filter by issue status ID"),
-                "priority_id" to SchemaBuilder.intProp("Filter by priority ID"),
-                "severity_id" to SchemaBuilder.intProp("Filter by severity ID"),
-                "type_id" to SchemaBuilder.intProp("Filter by type ID"),
+                "status" to SchemaBuilder.stringProp("Filter by issue status name (e.g. 'New', 'In progress', 'Closed') or numeric ID"),
+                "status_id" to SchemaBuilder.intProp("Legacy alias: numeric status ID"),
+                "priority" to SchemaBuilder.stringProp("Filter by priority name (e.g. 'Low', 'Normal', 'High') or numeric ID"),
+                "priority_id" to SchemaBuilder.intProp("Legacy alias: numeric priority ID"),
+                "severity" to SchemaBuilder.stringProp("Filter by severity name (e.g. 'Minor', 'Normal', 'Critical') or numeric ID"),
+                "severity_id" to SchemaBuilder.intProp("Legacy alias: numeric severity ID"),
+                "type" to SchemaBuilder.stringProp("Filter by type name (e.g. 'Bug', 'Question', 'Enhancement') or numeric ID"),
+                "type_id" to SchemaBuilder.intProp("Legacy alias: numeric type ID"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             )
@@ -33,10 +37,18 @@ object ListIssuesTool : McpTool {
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
         val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
         val projectId = client.resolveProjectId(projectParam)
-        val statusId = args["status_id"]?.jsonPrimitive?.longOrNull
-        val priorityId = args["priority_id"]?.jsonPrimitive?.longOrNull
-        val severityId = args["severity_id"]?.jsonPrimitive?.longOrNull
-        val typeId = args["type_id"]?.jsonPrimitive?.longOrNull
+
+        val statusParam = args["status"] ?: args["status_id"]
+        val statusId = statusParam?.let { TaigaResolver.resolveIssueStatus(client, projectId, it) }
+
+        val priorityParam = args["priority"] ?: args["priority_id"]
+        val priorityId = priorityParam?.let { TaigaResolver.resolvePriority(client, projectId, it) }
+
+        val severityParam = args["severity"] ?: args["severity_id"]
+        val severityId = severityParam?.let { TaigaResolver.resolveSeverity(client, projectId, it) }
+
+        val typeParam = args["type"] ?: args["type_id"]
+        val typeId = typeParam?.let { TaigaResolver.resolveIssueType(client, projectId, it) }
 
         val issues = client.listIssues(projectId, statusId, priorityId, severityId, typeId)
         return SchemaBuilder.successJson(issues)
@@ -67,17 +79,21 @@ object GetIssueTool : McpTool {
 object CreateIssueTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_create_issue",
-        description = "Create a new issue/bug in a Taiga project",
+        description = "Create a new issue/bug in a Taiga project. Supports type names ('Bug'), priority names ('High'), severity names ('Critical'), and status names.",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "subject" to SchemaBuilder.stringProp("Subject or title of the issue"),
                 "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
-                "description" to SchemaBuilder.stringProp("Detailed description of the issue"),
-                "type_id" to SchemaBuilder.intProp("Issue type ID (Bug, Question, Enhancement, etc.)"),
-                "priority_id" to SchemaBuilder.intProp("Priority ID (Low, Normal, High)"),
-                "severity_id" to SchemaBuilder.intProp("Severity ID (Wishlist, Minor, Major, Critical)"),
-                "status_id" to SchemaBuilder.intProp("Status ID (New, In progress, Ready for test, Closed)"),
-                "assigned_to" to SchemaBuilder.intProp("User ID to assign this issue to"),
+                "description" to SchemaBuilder.stringProp("Detailed description of the issue (markdown supported)"),
+                "type" to SchemaBuilder.stringProp("Issue type name (e.g. 'Bug', 'Question', 'Enhancement') or numeric ID"),
+                "type_id" to SchemaBuilder.intProp("Legacy alias: numeric type ID"),
+                "priority" to SchemaBuilder.stringProp("Priority name (e.g. 'Low', 'Normal', 'High') or numeric ID"),
+                "priority_id" to SchemaBuilder.intProp("Legacy alias: numeric priority ID"),
+                "severity" to SchemaBuilder.stringProp("Severity name (e.g. 'Wishlist', 'Minor', 'Normal', 'Major', 'Critical') or numeric ID"),
+                "severity_id" to SchemaBuilder.intProp("Legacy alias: numeric severity ID"),
+                "status" to SchemaBuilder.stringProp("Status name (e.g. 'New', 'In progress', 'Ready for test', 'Closed') or numeric ID"),
+                "status_id" to SchemaBuilder.intProp("Legacy alias: numeric status ID"),
+                "assigned_to" to SchemaBuilder.stringProp("User ID, username, or email to assign this issue to"),
                 "tags" to SchemaBuilder.arrayProp("List of tags"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
@@ -91,15 +107,30 @@ object CreateIssueTool : McpTool {
         val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
         val projectId = client.resolveProjectId(projectParam)
 
+        val typeParam = args["type"] ?: args["type_id"]
+        val typeId = typeParam?.let { TaigaResolver.resolveIssueType(client, projectId, it) }
+
+        val priorityParam = args["priority"] ?: args["priority_id"]
+        val priorityId = priorityParam?.let { TaigaResolver.resolvePriority(client, projectId, it) }
+
+        val severityParam = args["severity"] ?: args["severity_id"]
+        val severityId = severityParam?.let { TaigaResolver.resolveSeverity(client, projectId, it) }
+
+        val statusParam = args["status"] ?: args["status_id"]
+        val statusId = statusParam?.let { TaigaResolver.resolveIssueStatus(client, projectId, it) }
+
+        val assignedToParam = args["assigned_to"]
+        val assignedToId = assignedToParam?.let { TaigaResolver.resolveAssignee(client, projectId, it) }
+
         val payload = buildJsonObject {
             put("subject", subject)
             put("project", projectId)
             args["description"]?.jsonPrimitive?.contentOrNull?.let { put("description", it) }
-            args["type_id"]?.jsonPrimitive?.longOrNull?.let { put("type", it) }
-            args["priority_id"]?.jsonPrimitive?.longOrNull?.let { put("priority", it) }
-            args["severity_id"]?.jsonPrimitive?.longOrNull?.let { put("severity", it) }
-            args["status_id"]?.jsonPrimitive?.longOrNull?.let { put("status", it) }
-            args["assigned_to"]?.jsonPrimitive?.longOrNull?.let { put("assigned_to", it) }
+            typeId?.let { put("type", it) }
+            priorityId?.let { put("priority", it) }
+            severityId?.let { put("severity", it) }
+            statusId?.let { put("status", it) }
+            assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
         }
 
@@ -111,19 +142,24 @@ object CreateIssueTool : McpTool {
 object UpdateIssueTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_update_issue",
-        description = "Update an existing issue in Taiga",
+        description = "Update an existing issue in Taiga. Version concurrency is automatically handled if omitted. Supports names for status, priority, severity, type, and comments.",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "id" to SchemaBuilder.intProp("The numeric ID of the issue to update"),
-                "version" to SchemaBuilder.intProp("Current version of the issue"),
+                "version" to SchemaBuilder.intProp("Optional current version of the issue (auto-resolved if omitted)"),
                 "subject" to SchemaBuilder.stringProp("Updated subject"),
                 "description" to SchemaBuilder.stringProp("Updated description"),
-                "type_id" to SchemaBuilder.intProp("Updated type ID"),
-                "priority_id" to SchemaBuilder.intProp("Updated priority ID"),
-                "severity_id" to SchemaBuilder.intProp("Updated severity ID"),
-                "status_id" to SchemaBuilder.intProp("Updated status ID"),
-                "assigned_to" to SchemaBuilder.intProp("Updated assigned user ID"),
+                "type" to SchemaBuilder.stringProp("Updated type name or numeric ID"),
+                "type_id" to SchemaBuilder.intProp("Legacy alias: updated type ID"),
+                "priority" to SchemaBuilder.stringProp("Updated priority name or numeric ID"),
+                "priority_id" to SchemaBuilder.intProp("Legacy alias: updated priority ID"),
+                "severity" to SchemaBuilder.stringProp("Updated severity name or numeric ID"),
+                "severity_id" to SchemaBuilder.intProp("Legacy alias: updated severity ID"),
+                "status" to SchemaBuilder.stringProp("Updated status name or numeric ID"),
+                "status_id" to SchemaBuilder.intProp("Legacy alias: updated status ID"),
+                "assigned_to" to SchemaBuilder.stringProp("Updated assigned user ID, username, or email"),
                 "tags" to SchemaBuilder.arrayProp("Updated tags list"),
+                "comment" to SchemaBuilder.stringProp("Optional comment or note to record in the issue's activity history"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             ),
@@ -133,19 +169,39 @@ object UpdateIssueTool : McpTool {
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
         val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
-        val current = if (args["version"] == null) client.getIssue(id) else null
+        val current = if (args["version"] == null || args["status"] != null || args["priority"] != null || args["severity"] != null || args["type"] != null || args["assigned_to"] != null) {
+            client.getIssue(id)
+        } else null
+
         val version = args["version"]?.jsonPrimitive?.intOrNull ?: current?.version ?: 1
+        val projectId = current?.project ?: client.resolveProjectId(args["project"]?.jsonPrimitive?.contentOrNull)
+
+        val typeParam = args["type"] ?: args["type_id"]
+        val typeId = typeParam?.let { TaigaResolver.resolveIssueType(client, projectId, it) }
+
+        val priorityParam = args["priority"] ?: args["priority_id"]
+        val priorityId = priorityParam?.let { TaigaResolver.resolvePriority(client, projectId, it) }
+
+        val severityParam = args["severity"] ?: args["severity_id"]
+        val severityId = severityParam?.let { TaigaResolver.resolveSeverity(client, projectId, it) }
+
+        val statusParam = args["status"] ?: args["status_id"]
+        val statusId = statusParam?.let { TaigaResolver.resolveIssueStatus(client, projectId, it) }
+
+        val assignedToParam = args["assigned_to"]
+        val assignedToId = assignedToParam?.let { TaigaResolver.resolveAssignee(client, projectId, it) }
 
         val payload = buildJsonObject {
             put("version", version)
             args["subject"]?.jsonPrimitive?.contentOrNull?.let { put("subject", it) }
             args["description"]?.jsonPrimitive?.contentOrNull?.let { put("description", it) }
-            args["type_id"]?.jsonPrimitive?.longOrNull?.let { put("type", it) }
-            args["priority_id"]?.jsonPrimitive?.longOrNull?.let { put("priority", it) }
-            args["severity_id"]?.jsonPrimitive?.longOrNull?.let { put("severity", it) }
-            args["status_id"]?.jsonPrimitive?.longOrNull?.let { put("status", it) }
-            args["assigned_to"]?.jsonPrimitive?.longOrNull?.let { put("assigned_to", it) }
+            typeId?.let { put("type", it) }
+            priorityId?.let { put("priority", it) }
+            severityId?.let { put("severity", it) }
+            statusId?.let { put("status", it) }
+            assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
+            args["comment"]?.jsonPrimitive?.contentOrNull?.let { put("comment", it) }
         }
 
         val updated = client.updateIssue(id, payload)

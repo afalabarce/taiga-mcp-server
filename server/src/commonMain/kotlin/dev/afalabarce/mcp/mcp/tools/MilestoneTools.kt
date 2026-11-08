@@ -35,20 +35,32 @@ object ListMilestonesTool : McpTool {
 object GetMilestoneTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_get_milestone",
-        description = "Get detailed information about a milestone/sprint by its ID (including its user stories and sprint points)",
+        description = "Get detailed information about a milestone/sprint by numeric ID, sprint name, or slug (including user stories and sprint points)",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "id" to SchemaBuilder.intProp("The numeric ID of the milestone (sprint)"),
+                "milestone" to SchemaBuilder.stringProp("Sprint name or slug (if numeric ID is not known)"),
+                "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
-            ),
-            required = listOf("id")
+            )
         )
     )
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
-        val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
-        val milestone = client.getMilestone(id)
+        val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
+        val projectId = client.resolveProjectId(projectParam)
+
+        val idParam = args["id"]?.jsonPrimitive?.longOrNull
+        val milestoneId = if (idParam != null) {
+            idParam
+        } else {
+            val milestoneParam = args["milestone"] ?: throw IllegalArgumentException("Either 'id' or 'milestone' must be provided")
+            TaigaResolver.resolveMilestone(client, projectId, milestoneParam)
+                ?: throw IllegalArgumentException("Could not resolve milestone '$milestoneParam'")
+        }
+
+        val milestone = client.getMilestone(milestoneId)
         return SchemaBuilder.successJson(milestone)
     }
 }

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TaigaConfig(
-    val apiUrl: String,
+    val apiUrl: String = "https://api.taiga.io",
     val authToken: String? = null,
     val defaultProject: String? = null
 ) {

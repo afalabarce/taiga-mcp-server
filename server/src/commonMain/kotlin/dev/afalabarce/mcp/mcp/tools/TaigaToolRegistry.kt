@@ -79,8 +79,20 @@ class TaigaToolRegistry(
             )
             tool.execute(client, arguments, configManager)
         } catch (e: TaigaApiException) {
+            val hint = when (e.statusCode) {
+                401 -> " [Hint: Authentication failed. Verify your auth token or call taiga_login/taiga_set_config]"
+                403 -> " [Hint: Permission denied. Your Taiga user account does not have sufficient permissions for this action]"
+                404 -> " [Hint: Resource or project not found. Verify the numeric ID or project slug]"
+                409 -> " [Hint: Concurrency conflict (409). The item version changed. Omit the 'version' parameter to let the MCP server fetch and apply the latest version automatically]"
+                else -> ""
+            }
             McpCallToolResult(
-                content = listOf(McpContent(text = "Taiga API Error (${e.statusCode}): ${e.message}")),
+                content = listOf(McpContent(text = "Taiga API Error (${e.statusCode}): ${e.message}$hint")),
+                isError = true
+            )
+        } catch (e: IllegalArgumentException) {
+            McpCallToolResult(
+                content = listOf(McpContent(text = "Validation Error: ${e.message}")),
                 isError = true
             )
         } catch (e: Exception) {
@@ -137,6 +149,13 @@ class TaigaToolRegistry(
 
         // --- Project Statuses / Metadata ---
         register(GetProjectStatusesTool)
+
+        // --- Search, High-Level Overview & Collaboration ---
+        register(SearchTool)
+        register(GetProjectSummaryTool)
+        register(AddCommentTool)
+        register(ListMembersTool)
+        register(GetHistoryTool)
 
         // --- Configuration & Authentication ---
         register(GetConfigTool)

@@ -9,7 +9,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
@@ -17,11 +16,12 @@ import kotlinx.serialization.json.put
 object ListEpicsTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_list_epics",
-        description = "List all epics for a Taiga project",
+        description = "List epics for a project, optionally filtered by status name or ID",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
-                "status_id" to SchemaBuilder.intProp("Optional filter by status ID"),
+                "status" to SchemaBuilder.stringProp("Filter epics by status name or numeric ID"),
+                "status_id" to SchemaBuilder.intProp("Legacy alias: filter epics by status ID"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             )
@@ -31,7 +31,10 @@ object ListEpicsTool : McpTool {
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
         val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
         val projectId = client.resolveProjectId(projectParam)
-        val statusId = args["status_id"]?.jsonPrimitive?.longOrNull
+
+        val statusParam = args["status"] ?: args["status_id"]
+        val statusId = statusParam?.let { TaigaResolver.resolveEpicStatus(client, projectId, it) }
+
         val epics = client.listEpics(projectId, statusId)
         return SchemaBuilder.successJson(epics)
     }
@@ -40,7 +43,7 @@ object ListEpicsTool : McpTool {
 object GetEpicTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_get_epic",
-        description = "Get an epic by its ID",
+        description = "Get detailed information about an epic by ID",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "id" to SchemaBuilder.intProp("The numeric ID of the epic"),
@@ -61,15 +64,16 @@ object GetEpicTool : McpTool {
 object CreateEpicTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_create_epic",
-        description = "Create a new epic in a Taiga project",
+        description = "Create a new epic in a Taiga project. Supports status names and assignee usernames.",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "subject" to SchemaBuilder.stringProp("Subject or title of the epic"),
                 "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
                 "description" to SchemaBuilder.stringProp("Detailed description of the epic (markdown supported)"),
-                "color" to SchemaBuilder.stringProp("Hex color code (e.g. '#A8E6CF')"),
-                "status_id" to SchemaBuilder.intProp("Status ID"),
-                "assigned_to" to SchemaBuilder.intProp("User ID to assign this epic to"),
+                "color" to SchemaBuilder.stringProp("Hex color code for the epic (e.g. '#A8E6CF')"),
+                "status" to SchemaBuilder.stringProp("Status name or numeric ID"),
+                "status_id" to SchemaBuilder.intProp("Legacy alias: numeric status ID"),
+                "assigned_to" to SchemaBuilder.stringProp("User ID, username, or email to assign this epic to"),
                 "tags" to SchemaBuilder.arrayProp("List of tags"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
@@ -83,13 +87,19 @@ object CreateEpicTool : McpTool {
         val projectParam = args["project"]?.jsonPrimitive?.contentOrNull
         val projectId = client.resolveProjectId(projectParam)
 
+        val statusParam = args["status"] ?: args["status_id"]
+        val statusId = statusParam?.let { TaigaResolver.resolveEpicStatus(client, projectId, it) }
+
+        val assignedToParam = args["assigned_to"]
+        val assignedToId = assignedToParam?.let { TaigaResolver.resolveAssignee(client, projectId, it) }
+
         val payload = buildJsonObject {
             put("subject", subject)
             put("project", projectId)
             args["description"]?.jsonPrimitive?.contentOrNull?.let { put("description", it) }
             args["color"]?.jsonPrimitive?.contentOrNull?.let { put("color", it) }
-            args["status_id"]?.jsonPrimitive?.longOrNull?.let { put("status", it) }
-            args["assigned_to"]?.jsonPrimitive?.longOrNull?.let { put("assigned_to", it) }
+            statusId?.let { put("status", it) }
+            assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
         }
 
@@ -101,17 +111,19 @@ object CreateEpicTool : McpTool {
 object UpdateEpicTool : McpTool {
     override val definition = McpToolDefinition(
         name = "taiga_update_epic",
-        description = "Update an existing epic",
+        description = "Update an existing epic. Version concurrency is automatically handled if omitted. Supports status names, assignee usernames, and comments.",
         inputSchema = SchemaBuilder.objectSchema(
             properties = mapOf(
                 "id" to SchemaBuilder.intProp("The ID of the epic to update"),
-                "version" to SchemaBuilder.intProp("Current version of the epic (concurrency check)"),
+                "version" to SchemaBuilder.intProp("Optional current version of the epic (auto-resolved if omitted)"),
                 "subject" to SchemaBuilder.stringProp("Updated subject"),
                 "description" to SchemaBuilder.stringProp("Updated description"),
                 "color" to SchemaBuilder.stringProp("Updated color hex code"),
-                "status_id" to SchemaBuilder.intProp("Updated status ID"),
-                "assigned_to" to SchemaBuilder.intProp("Updated assigned user ID"),
+                "status" to SchemaBuilder.stringProp("Updated status name or numeric ID"),
+                "status_id" to SchemaBuilder.intProp("Legacy alias: updated status ID"),
+                "assigned_to" to SchemaBuilder.stringProp("Updated assigned user ID, username, or email"),
                 "tags" to SchemaBuilder.arrayProp("Updated tags list"),
+                "comment" to SchemaBuilder.stringProp("Optional comment to record in the epic's activity history"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             ),
@@ -121,17 +133,28 @@ object UpdateEpicTool : McpTool {
 
     override suspend fun execute(client: TaigaClient, args: JsonObject, configManager: ConfigManager): McpCallToolResult {
         val id = args["id"]?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException("Missing required parameter 'id'")
-        val currentEpic = if (args["version"] == null) client.getEpic(id) else null
+        val currentEpic = if (args["version"] == null || args["status"] != null || args["assigned_to"] != null) {
+            client.getEpic(id)
+        } else null
+
         val version = args["version"]?.jsonPrimitive?.intOrNull ?: currentEpic?.version ?: 1
+        val projectId = currentEpic?.project ?: client.resolveProjectId(args["project"]?.jsonPrimitive?.contentOrNull)
+
+        val statusParam = args["status"] ?: args["status_id"]
+        val statusId = statusParam?.let { TaigaResolver.resolveEpicStatus(client, projectId, it) }
+
+        val assignedToParam = args["assigned_to"]
+        val assignedToId = assignedToParam?.let { TaigaResolver.resolveAssignee(client, projectId, it) }
 
         val payload = buildJsonObject {
             put("version", version)
             args["subject"]?.jsonPrimitive?.contentOrNull?.let { put("subject", it) }
             args["description"]?.jsonPrimitive?.contentOrNull?.let { put("description", it) }
             args["color"]?.jsonPrimitive?.contentOrNull?.let { put("color", it) }
-            args["status_id"]?.jsonPrimitive?.longOrNull?.let { put("status", it) }
-            args["assigned_to"]?.jsonPrimitive?.longOrNull?.let { put("assigned_to", it) }
+            statusId?.let { put("status", it) }
+            assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
+            args["comment"]?.jsonPrimitive?.contentOrNull?.let { put("comment", it) }
         }
 
         val updated = client.updateEpic(id, payload)
