@@ -256,6 +256,8 @@ class TaigaToolRegistry(
 
         // --- Search, High-Level Overview & Collaboration ---
         register(SearchTool)
+        register(NaturalQueryTool)
+        register(QueryTool)
         register(GetProjectSummaryTool)
         register(AddCommentTool)
         register(ListMembersTool)

@@ -55,6 +55,16 @@ class TaigaMcpCommand : CliktCommand(
         help = "Default Taiga Project slug or numeric ID (default: TAIGA_DEFAULT_PROJECT)"
     )
 
+    private val queryOption: String? by option(
+        "--query", "-q",
+        help = "Execute a one-shot natural language query against Taiga and print the result directly (no scripts or bridge needed)"
+    )
+
+    private val formatOption: String? by option(
+        "--format", "-f",
+        help = "Output format when using --query ('table' or 'json', default: 'table')"
+    )
+
     override fun run() {
         // 1. Resolve configuration files via SERVER_OPTS, system properties, environment, and conventions
         val resolvedConfig = ServerOptsParser.resolve()
@@ -101,6 +111,32 @@ class TaigaMcpCommand : CliktCommand(
         val clientFactory = TaigaClientFactory(configManager)
         val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
         val mcpServer = McpServer(toolRegistry, configManager)
+
+        if (!queryOption.isNullOrBlank()) {
+            val format = formatOption?.lowercase() ?: "table"
+            runBlocking {
+                val client = clientFactory.getClient(
+                    overrideApiUrl = initialConfig.apiUrl,
+                    overrideAuthToken = initialConfig.authToken,
+                    overrideProject = initialConfig.defaultProject
+                )
+                val projectId = client.resolveProjectId(initialConfig.defaultProject)
+                val result = dev.afalabarce.mcp.mcp.tools.TaigaNaturalQueryEngine.executeQuery(
+                    client = client,
+                    projectId = projectId,
+                    query = queryOption!!
+                )
+                if (format == "json") {
+                    println(dev.afalabarce.mcp.taiga.client.TaigaClient.json.encodeToString(
+                        dev.afalabarce.mcp.mcp.tools.NaturalQueryResult.serializer(),
+                        result
+                    ))
+                } else {
+                    println(result.markdownTable)
+                }
+            }
+            return
+        }
 
         if (stdio) {
             // MCP Stdio transport mode

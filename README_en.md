@@ -318,9 +318,9 @@ Open in your browser:
 
 ---
 
-## 🧰 MCP Tools Catalog (121 Tools Available)
+## 🧰 MCP Tools Catalog (123 Tools Available)
 
-The server registers **121 tools** under the Model Context Protocol specification covering 100% of Taiga's capabilities:
+The server registers **123 tools** under the Model Context Protocol specification covering 100% of Taiga's capabilities:
 
 | Tool | Action | Notable Parameters |
 |---|---|---|
@@ -457,8 +457,10 @@ The server registers **121 tools** under the Model Context Protocol specificatio
 | `taiga_get_user_liked` | Lists items liked by a user | `id` |
 | `taiga_get_user_voted` | Lists items voted for by a user | `id` |
 | `taiga_get_user_watched` | Lists items watched by a user | `id` |
-| **Search & Executive Summary** | | |
-| `taiga_search` | Unified global search across stories, tasks, issues, epics, and wiki | `text`, `project` |
+| **Natural Language Query, Search & Executive Summary** | | |
+| `taiga_natural_query` | Intelligent natural language query engine automatically resolving intent, active sprints, statuses, and assignees (compact Markdown table or JSON) | `query`, `project`, `format`, `type`, `status`, `milestone`, `assigned_to`, `limit` |
+| `taiga_query` | Alias for `taiga_natural_query` | `query`, `project`, `format` |
+| `taiga_search` | Unified global search across stories, tasks, issues, epics, and wiki (with natural language query fallback) | `query`, `project` |
 | `taiga_get_project_summary` | Executive summary with status metrics, active sprints, and members | `project` |
 | `taiga_get_project_statuses` | Retrieves all IDs for statuses, priorities, severities, and roles | `project` |
 | **Server & Configuration** | | |
@@ -646,11 +648,23 @@ If you prefer to run the binary locally on your machine as a child process of yo
 
 Once configured in `mcp.json`, your AI assistant will have full access to the Taiga tool catalog:
 
-- *"What pending tasks are in the current sprint of the backend project?"*
+- *"What pending tasks are in the current sprint of project oposita2?"* (it automatically executes `taiga_natural_query` to resolve the active sprint and open statuses into an ultra-compact Markdown table, saving 85%+ tokens).
 - *"Create a user story titled 'Implement OAuth2 login' with technical details and tags 'security, backend'."*
 - *"Check all open critical issues and generate a summary report."*
 - *"Update task #45 status to 'Resolved' and assign it to my user."*
 - *"Create a wiki page with deployment documentation in Markdown format."*
+
+#### ⚡ Natural Language Queries via CLI (No Python Scripts Needed)
+If an agent or developer operates in a shell or bash terminal without native MCP tool bindings, queries can be run directly using the server binary:
+
+```bash
+# Instant natural language query (renders a clean Markdown table)
+./bin/server -q "What are the pending tasks in the current sprint?"
+
+# Structured compact JSON output
+./bin/server -q "user stories assigned to Antonio" --format json
+```
+This entirely eliminates the need for agents to write Python bridge scripts or ad-hoc REST callers.
 
 ---
 

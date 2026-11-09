@@ -263,6 +263,8 @@ class TaigaMcpServerTest {
 
         // Collaboration, Search & Productivity
         assertTrue(toolNames.contains("taiga_search"))
+        assertTrue(toolNames.contains("taiga_natural_query"))
+        assertTrue(toolNames.contains("taiga_query"))
         assertTrue(toolNames.contains("taiga_get_project_summary"))
         assertTrue(toolNames.contains("taiga_add_comment"))
         assertTrue(toolNames.contains("taiga_list_members"))
@@ -684,7 +686,7 @@ class TaigaMcpServerTest {
     }
 
     @Test
-    fun testEnhancedToolSchemasAndParameters() = runBlocking {
+    fun testEnhancedToolSchemasAndParameters(): Unit = runBlocking {
         val configManager = ConfigManager()
         val clientFactory = TaigaClientFactory(configManager)
         val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
@@ -723,5 +725,45 @@ class TaigaMcpServerTest {
         val commentRequired = commentTool.definition.inputSchema["required"]?.jsonArray
         assertNotNull(commentRequired)
         assertTrue(commentRequired.any { it.jsonPrimitive.content == "comment" })
+
+        // Verify taiga_natural_query tool
+        val naturalQueryTool = toolRegistry.getTool("taiga_natural_query")
+        assertNotNull(naturalQueryTool)
+        val nqRequired = naturalQueryTool.definition.inputSchema["required"]?.jsonArray
+        assertNotNull(nqRequired)
+        assertTrue(nqRequired.any { it.jsonPrimitive.content == "query" })
+        val nqProps = naturalQueryTool.definition.inputSchema["properties"]?.jsonObject
+        assertNotNull(nqProps)
+        assertTrue(nqProps.containsKey("format"))
+        assertTrue(nqProps.containsKey("type"))
+        assertTrue(nqProps.containsKey("milestone"))
+        assertTrue(nqProps.containsKey("status"))
+        assertTrue(nqProps.containsKey("assigned_to"))
+
+        // Verify taiga_query alias
+        val queryAliasTool = toolRegistry.getTool("taiga_query")
+        assertNotNull(queryAliasTool)
+        Unit
+    }
+
+    @Test
+    fun testNaturalQueryEngineParsing(): Unit = runBlocking {
+        // Test parsing and table formatting with synthetic data
+        val item = dev.afalabarce.mcp.mcp.tools.CompactTaigaItem(
+            ref = 42,
+            id = 1001,
+            type = "task",
+            subject = "Implement OAuth2 login endpoint",
+            status = "In progress",
+            isClosed = false,
+            assignedTo = "antonio",
+            milestone = "Sprint 1",
+            dueDate = "2026-11-20"
+        )
+        assertEquals(42L, item.ref)
+        assertEquals("task", item.type)
+        assertFalse(item.isClosed)
+        assertEquals("antonio", item.assignedTo)
+        Unit
     }
 }

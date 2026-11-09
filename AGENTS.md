@@ -6,11 +6,23 @@ Este repositorio expone un servidor **MCP (Model Context Protocol)** para Taiga 
 
 > **IMPORTANTE**: Para cualquier operación relacionada con Taiga (proyectos, epics, historias de usuario, tareas, incidencias, sprints/hitos o wiki), **debes utilizar EXCLUSIVAMENTE las herramientas MCP `taiga_*`**.
 >
-> **PROHIBIDO**: No ejecutes llamadas HTTP directas, `curl`, scripts en Python ni peticiones REST manuales contra la API de Taiga.
+> **PROHIBIDO**: No ejecutes llamadas HTTP directas, `curl`, scripts en Python como puente ni peticiones REST manuales contra la API de Taiga. La creación de scripts Python auxiliares para interactuar con Taiga o con el MCP está terminantemente prohibida ya que es incorrecta, innecesaria y consume tokens excesivos.
+>
+> **CONSULTAS EN LENGUAJE NATURAL**: Para cualquier pregunta o filtro expresado en lenguaje natural (ej. *"¿Cuáles son las tareas pendientes del sprint actual?"*, *"Historias de usuario asignadas a Antonio"*, *"Bugs críticos abiertos"*), **utiliza directamente la herramienta `taiga_natural_query` (o `taiga_query`)**. Esta herramienta interpreta la intención, detecta sprints activos, miembros y estados, y genera directamente un resumen y tabla markdown ultra-optimizada en tokens. Si operas desde una terminal bash sin herramientas MCP enlazadas, ejecuta el binario con `--query "<tu consulta>"` (ej. `./bin/server -q "tareas pendientes"`).
 
-### ¿Por qué el MCP de Taiga es superior a las llamadas REST directas?
+### ¿Por qué el MCP de Taiga es superior a scripts intermedios o llamadas REST directas?
 
-1. **Resolución Automática de Nombres y Slugs**:
+1. **Consultas en Lenguaje Natural y Ahorro Masivo de Tokens (`taiga_natural_query`)**:
+   - Resuelve en una única llamada preguntas completas como *"tareas pendientes de Juan en el sprint actual"*.
+   - Detecta de forma inteligente:
+     - Tipo de recurso (tareas, historias, bugs, epics, wiki).
+     - Hito/Sprint activo automáticamente con `"sprint actual"`, `"current sprint"` o por nombre/slug.
+     - Estados de ciclo de vida (`"pendientes"` / no cerradas, `"cerradas"`, `"bloqueadas"`, etc.).
+     - Asignaciones (`"sin asignar"`, miembros por nombre o email).
+     - Severidades y prioridades (`"crítica"`, `"alta"`, etc.).
+   - Devuelve una tabla Markdown lista para presentar al usuario con una reducción de más del 85% en tokens respecto a respuestas REST crudas.
+
+2. **Resolución Automática de Nombres y Slugs**:
    - No necesitas buscar IDs numéricos previos. Puedes indicar nombres legibles directamente:
      - `status`: `"In progress"`, `"New"`, `"Ready for test"`, `"Closed"`, etc.
      - `milestone`: `"Sprint 1"`, `"sprint-1"`, etc.
@@ -39,11 +51,11 @@ Este repositorio expone un servidor **MCP (Model Context Protocol)** para Taiga 
 
 ---
 
-## Catálogo Rápido de Herramientas MCP Disponibles (121 Herramientas)
+## Catálogo Rápido de Herramientas MCP Disponibles (123 Herramientas)
 
 | Categoría | Herramientas MCP | Propósito |
 |---|---|---|
-| **Resumen y Búsqueda** | `taiga_get_project_summary`, `taiga_search` | Métricas generales del proyecto y búsqueda unificada en toda la plataforma |
+| **Consultas en Lenguaje Natural, Resumen y Búsqueda** | `taiga_natural_query`, `taiga_query`, `taiga_get_project_summary`, `taiga_search` | Consultas inteligentes en lenguaje natural sin scripts, métricas del proyecto y búsqueda unificada |
 | **Proyectos** | `taiga_list_projects`, `taiga_get_project`, `taiga_create_project`, `taiga_update_project`, `taiga_delete_project`, `taiga_duplicate_project`, `taiga_list_project_templates`, `taiga_export_project`, `taiga_export_csv`, `taiga_transfer_project_start`, `taiga_transfer_project_accept` | Ciclo de vida completo, duplicación, plantillas, exportación CSV/completa y transferencias |
 | **Miembros y Roles** | `taiga_list_memberships`, `taiga_create_membership`, `taiga_delete_membership`, `taiga_list_members` | Gestión de miembros, invitaciones, roles y permisos |
 | **Etiquetas** | `taiga_list_tags` | Consulta de etiquetas (tags) y sus códigos de color |

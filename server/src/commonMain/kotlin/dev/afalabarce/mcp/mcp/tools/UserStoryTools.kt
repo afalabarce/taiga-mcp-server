@@ -22,8 +22,9 @@ object ListUserStoriesTool : McpTool {
                 "project" to SchemaBuilder.stringProp("Project ID or slug (defaults to configured project)"),
                 "status" to SchemaBuilder.stringProp("Filter by story status name (e.g. 'In progress', 'Ready for test') or numeric ID"),
                 "status_id" to SchemaBuilder.intProp("Legacy alias: filter by numeric story status ID"),
-                "milestone" to SchemaBuilder.stringProp("Filter by milestone/sprint name, slug, or numeric ID"),
+                "milestone" to SchemaBuilder.stringProp("Filter by milestone/sprint name, slug, or numeric ID (use 'current' for active sprint)"),
                 "milestone_id" to SchemaBuilder.intProp("Legacy alias: filter by numeric milestone ID"),
+                "assigned_to" to SchemaBuilder.stringProp("Filter by assigned user ID, username, or email"),
                 "epic_id" to SchemaBuilder.intProp("Filter by parent epic ID"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
@@ -41,9 +42,12 @@ object ListUserStoriesTool : McpTool {
         val milestoneParam = args["milestone"] ?: args["milestone_id"]
         val milestoneId = TaigaResolver.resolveMilestone(client, projectId, milestoneParam)
 
+        val assignedToParam = args["assigned_to"]
+        val assignedToId = TaigaResolver.resolveAssignee(client, projectId, assignedToParam)
+
         val epicId = args["epic_id"]?.jsonPrimitive?.longOrNull
 
-        val stories = client.listUserStories(projectId, milestoneId, statusId, epicId)
+        val stories = client.listUserStories(projectId, milestoneId, statusId, epicId, assignedToId)
         return SchemaBuilder.successJson(stories)
     }
 }

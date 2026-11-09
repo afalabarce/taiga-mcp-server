@@ -125,6 +125,12 @@ object TaigaResolver {
         raw.toLongOrNull()?.let { return it }
 
         val milestones = client.listMilestones(projectId)
+        val normalized = raw.lowercase().trim()
+        if (normalized in listOf("current", "actual", "active", "sprint actual", "current sprint", "hito actual", "activo", "este sprint")) {
+            val active = milestones.firstOrNull { !it.closed } ?: milestones.lastOrNull()
+            if (active != null) return active.id
+        }
+
         val matched = milestones.firstOrNull {
             it.name.equals(raw, ignoreCase = true) || it.slug.equals(raw, ignoreCase = true)
         } ?: throw IllegalArgumentException(
@@ -137,11 +143,18 @@ object TaigaResolver {
         val raw = extractString(element) ?: return null
         raw.toLongOrNull()?.let { return it }
 
+        val normalized = raw.lowercase().trim()
+        if (normalized in listOf("unassigned", "sin asignar", "sin asignación", "sin asignacion", "none", "nadie")) {
+            return null
+        }
+
         val memberships = runCatching { client.listMemberships(projectId) }.getOrDefault(emptyList())
         val matched = memberships.firstOrNull {
             it.fullName?.equals(raw, ignoreCase = true) == true ||
             it.userEmail?.equals(raw, ignoreCase = true) == true ||
-            it.user?.toString() == raw
+            it.user?.toString() == raw ||
+            it.fullName?.contains(raw, ignoreCase = true) == true ||
+            it.userEmail?.substringBefore("@")?.equals(raw, ignoreCase = true) == true
         } ?: throw IllegalArgumentException(
             "Assignee '$raw' not found in project members. Available members: ${memberships.joinToString { "${it.fullName ?: it.userEmail} (ID: ${it.user})" }}"
         )

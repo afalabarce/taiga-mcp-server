@@ -317,9 +317,9 @@ Abre en tu navegador web:
 
 ---
 
-## 🧰 Catálogo de Herramientas MCP (121 Herramientas Disponibles)
+## 🧰 Catálogo de Herramientas MCP (123 Herramientas Disponibles)
 
-El servidor registra **121 herramientas** bajo la especificación Model Context Protocol que cubren el 100% de la funcionalidad de Taiga:
+El servidor registra **123 herramientas** bajo la especificación Model Context Protocol que cubren el 100% de la funcionalidad de Taiga:
 
 | Herramienta | Acción | Parámetros Notables |
 |---|---|---|
@@ -456,8 +456,10 @@ El servidor registra **121 herramientas** bajo la especificación Model Context 
 | `taiga_get_user_liked` | Lista elementos a los que el usuario ha dado like | `id` |
 | `taiga_get_user_voted` | Lista elementos votados por el usuario | `id` |
 | `taiga_get_user_watched` | Lista elementos en seguimiento por el usuario | `id` |
-| **Búsqueda y Resumen Ejecutivo** | | |
-| `taiga_search` | Búsqueda global de texto en historias, tareas, bugs, epics y wiki | `text`, `project` |
+| **Consultas en Lenguaje Natural, Búsqueda y Resumen** | | |
+| `taiga_natural_query` | Consulta en lenguaje natural inteligente con resolución automática de intenciones, sprint activo, estados y miembros (tabla markdown o JSON) | `query`, `project`, `format`, `type`, `status`, `milestone`, `assigned_to`, `limit` |
+| `taiga_query` | Alias de `taiga_natural_query` para consultas en lenguaje natural | `query`, `project`, `format` |
+| `taiga_search` | Búsqueda global de texto en historias, tareas, bugs, epics y wiki (con fallback a lenguaje natural) | `query`, `project` |
 | `taiga_get_project_summary` | Resumen ejecutivo con métricas de estados, sprints activos y miembros | `project` |
 | `taiga_get_project_statuses` | Obtiene todos los IDs de estados, prioridades, severidades y roles | `project` |
 | **Servidor y Configuración** | | |
@@ -645,11 +647,23 @@ Si prefieres ejecutar el binario localmente en tu máquina como un proceso hijo 
 
 Una vez configurado en `mcp.json`, el agente inteligente dispondrá del catálogo de herramientas de Taiga. Puedes pedirle en lenguaje natural cosas como:
 
-- *"¿Cuáles son las tareas pendientes del sprint actual en el proyecto backend?"*
+- *"¿Cuáles son las tareas pendientes del sprint actual en el proyecto oposita2?"* (usará `taiga_natural_query` para resolver automáticamente el sprint activo y estados no cerrados en una tabla Markdown lista con un mínimo consumo de tokens).
 - *"Crea una historia de usuario titulada 'Implementar login OAuth2' con descripción técnica y etiquetas 'seguridad, backend'."*
 - *"Consulta las incidencias críticas abiertas y genera un informe de estado."*
 - *"Actualiza el estado de la tarea #45 a 'Resuelta' y asígnala a mi usuario."*
 - *"Crea una página wiki con la documentación de despliegue en formato Markdown."*
+
+#### ⚡ Consultas en Lenguaje Natural desde Terminal CLI (Sin Scripts Python)
+Si el agente o usuario opera desde una terminal bash sin integración nativa de function calling MCP, puede ejecutar directamente la consulta con el binario:
+
+```bash
+# Consulta rápida en lenguaje natural (salida en tabla Markdown)
+./bin/server -q "¿Cuáles son las tareas pendientes del sprint actual?"
+
+# Salida en formato JSON compacto
+./bin/server -q "historias de usuario asignadas a Antonio" --format json
+```
+Esto elimina por completo la necesidad de que los agentes creen scripts Python intermedios o llamadas REST ad-hoc.
 
 ---
 

@@ -28,6 +28,8 @@ object ListIssuesTool : McpTool {
                 "severity_id" to SchemaBuilder.intProp("Legacy alias: numeric severity ID"),
                 "type" to SchemaBuilder.stringProp("Filter by type name (e.g. 'Bug', 'Question', 'Enhancement') or numeric ID"),
                 "type_id" to SchemaBuilder.intProp("Legacy alias: numeric type ID"),
+                "milestone" to SchemaBuilder.stringProp("Filter by milestone/sprint name, slug, or numeric ID (use 'current' for active sprint)"),
+                "assigned_to" to SchemaBuilder.stringProp("Filter by assigned user ID, username, or email"),
                 "api_url" to SchemaBuilder.stringProp("Optional override for Taiga API URL"),
                 "auth_token" to SchemaBuilder.stringProp("Optional override for Taiga Auth Token")
             )
@@ -50,7 +52,13 @@ object ListIssuesTool : McpTool {
         val typeParam = args["type"] ?: args["type_id"]
         val typeId = typeParam?.let { TaigaResolver.resolveIssueType(client, projectId, it) }
 
-        val issues = client.listIssues(projectId, statusId, priorityId, severityId, typeId)
+        val milestoneParam = args["milestone"]
+        val milestoneId = milestoneParam?.let { TaigaResolver.resolveMilestone(client, projectId, it) }
+
+        val assignedToParam = args["assigned_to"]
+        val assignedToId = assignedToParam?.let { TaigaResolver.resolveAssignee(client, projectId, it) }
+
+        val issues = client.listIssues(projectId, statusId, priorityId, severityId, typeId, milestoneId, assignedToId)
         return SchemaBuilder.successJson(issues)
     }
 }

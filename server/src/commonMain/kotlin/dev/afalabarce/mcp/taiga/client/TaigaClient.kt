@@ -215,7 +215,8 @@ class TaigaClient(
         projectId: Long? = null,
         milestoneId: Long? = null,
         statusId: Long? = null,
-        epicId: Long? = null
+        epicId: Long? = null,
+        assignedToId: Long? = null
     ): List<TaigaUserStory> {
         val pid = projectId ?: resolveProjectId()
         val response = httpClient.get("$baseUrl/api/v1/userstories") {
@@ -224,6 +225,7 @@ class TaigaClient(
             milestoneId?.let { parameter("milestone", it) }
             statusId?.let { parameter("status", it) }
             epicId?.let { parameter("epic", it) }
+            assignedToId?.let { parameter("assigned_to", it) }
         }
         val text = handleResponse(response)
         return json.decodeFromString<List<TaigaUserStory>>(text)
@@ -328,7 +330,9 @@ class TaigaClient(
         statusId: Long? = null,
         priorityId: Long? = null,
         severityId: Long? = null,
-        typeId: Long? = null
+        typeId: Long? = null,
+        milestoneId: Long? = null,
+        assignedToId: Long? = null
     ): List<TaigaIssue> {
         val pid = projectId ?: resolveProjectId()
         val response = httpClient.get("$baseUrl/api/v1/issues") {
@@ -338,6 +342,8 @@ class TaigaClient(
             priorityId?.let { parameter("priority", it) }
             severityId?.let { parameter("severity", it) }
             typeId?.let { parameter("type", it) }
+            milestoneId?.let { parameter("milestone", it) }
+            assignedToId?.let { parameter("assigned_to", it) }
         }
         val text = handleResponse(response)
         return json.decodeFromString<List<TaigaIssue>>(text)
