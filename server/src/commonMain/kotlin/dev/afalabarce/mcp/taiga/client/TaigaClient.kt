@@ -75,6 +75,7 @@ class TaigaClient(
             isLenient = true
             encodeDefaults = true
             prettyPrint = true
+            explicitNulls = false
         }
 
         fun createDefaultHttpClient(): HttpClient = HttpClient(CIO) {
