@@ -4,8 +4,11 @@ import dev.afalabarce.mcp.config.ConfigManager
 import dev.afalabarce.mcp.mcp.protocol.McpCallToolResult
 import dev.afalabarce.mcp.mcp.protocol.McpToolDefinition
 import dev.afalabarce.mcp.taiga.client.TaigaClient
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -131,7 +134,7 @@ object CreateUserStoryTool : McpTool {
             milestoneId?.let { put("milestone", it) }
             assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
-            args["points"]?.let { if (it is JsonObject) put("points", it) }
+            normalizePoints(args["points"])?.let { put("points", it) }
             args["due_date"]?.jsonPrimitive?.contentOrNull?.let { put("due_date", it) }
             args["due_date_reason"]?.jsonPrimitive?.contentOrNull?.let { put("due_date_reason", it) }
         }
@@ -194,7 +197,7 @@ object UpdateUserStoryTool : McpTool {
             milestoneId?.let { put("milestone", it) }
             assignedToId?.let { put("assigned_to", it) }
             args["tags"]?.let { if (it is JsonArray) put("tags", it) }
-            args["points"]?.let { if (it is JsonObject) put("points", it) }
+            normalizePoints(args["points"])?.let { put("points", it) }
             args["due_date"]?.jsonPrimitive?.contentOrNull?.let { put("due_date", it) }
             args["due_date_reason"]?.jsonPrimitive?.contentOrNull?.let { put("due_date_reason", it) }
             args["comment"]?.jsonPrimitive?.contentOrNull?.let { put("comment", it) }
@@ -202,6 +205,26 @@ object UpdateUserStoryTool : McpTool {
 
         val updated = client.updateUserStory(id, payload)
         return SchemaBuilder.successJson(updated)
+    }
+}
+
+private fun normalizePoints(rawPoints: JsonElement?): JsonObject? {
+    val obj = when (rawPoints) {
+        is JsonObject -> rawPoints
+        is JsonPrimitive -> rawPoints.contentOrNull
+            ?.let { runCatching { Json.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+        else -> null
+    } ?: return null
+
+    return buildJsonObject {
+        obj.forEach { (rawKey, rawValue) ->
+            val cleanKey = rawKey.trim().removeSurrounding("\"")
+            val pointId = rawValue.jsonPrimitive.longOrNull
+                ?: rawValue.jsonPrimitive.contentOrNull?.trim()?.removeSurrounding("\"")?.toLongOrNull()
+            if (cleanKey.isNotEmpty() && pointId != null) {
+                put(cleanKey, pointId)
+            }
+        }
     }
 }
 

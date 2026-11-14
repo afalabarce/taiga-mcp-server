@@ -210,8 +210,8 @@ data class TaigaRole(
 data class TaigaPoint(
     val id: Long,
     val name: String,
-    val value: Double,
-    val role: Long,
+    val value: Double? = null,
+    val role: Long? = null,
     val order: Int = 0
 )
 
