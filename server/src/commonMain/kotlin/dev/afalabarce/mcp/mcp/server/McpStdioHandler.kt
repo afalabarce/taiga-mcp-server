@@ -7,23 +7,30 @@ import dev.afalabarce.mcp.taiga.client.TaigaClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.PrintStream
 
 class McpStdioHandler(
-    private val mcpServer: McpServer
+    private val mcpServer: McpServer,
+    private val output: PrintStream = System.out
 ) {
-    suspend fun run() = withContext(Dispatchers.Default) {
+    private val stdioJson = Json(TaigaClient.json) {
+        prettyPrint = false
+    }
+
+    suspend fun run() = withContext(Dispatchers.IO) {
         val reader = System.`in`.bufferedReader()
         while (true) {
             val line = reader.readLine() ?: break
             if (line.isBlank()) continue
 
             try {
-                val request = TaigaClient.json.decodeFromString<JsonRpcRequest>(line)
+                val request = stdioJson.decodeFromString<JsonRpcRequest>(line)
                 val response = mcpServer.handleRequest(request)
                 if (response != null) {
-                    val responseJson = TaigaClient.json.encodeToString(response)
-                    println(responseJson)
-                    System.out.flush()
+                    val responseJson = stdioJson.encodeToString(response)
+                    output.println(responseJson)
+                    output.flush()
                 }
             } catch (e: Exception) {
                 val errResponse = JsonRpcResponse(
@@ -33,8 +40,8 @@ class McpStdioHandler(
                         message = "Parse error: ${e.message}"
                     )
                 )
-                println(TaigaClient.json.encodeToString(errResponse))
-                System.out.flush()
+                output.println(stdioJson.encodeToString(errResponse))
+                output.flush()
             }
         }
     }

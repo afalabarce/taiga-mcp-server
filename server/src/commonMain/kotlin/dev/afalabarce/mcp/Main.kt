@@ -139,12 +139,15 @@ class TaigaMcpCommand : CliktCommand(
         }
 
         if (stdio) {
-            // MCP Stdio transport mode
+            // MCP Stdio transport mode: redirect System.out to System.err so logs never corrupt JSON-RPC stdout
+            val originalOut = System.out
+            System.setOut(System.err)
             System.err.println("Starting Taiga MCP server in stdio mode...")
-            val stdioHandler = McpStdioHandler(mcpServer)
+            val stdioHandler = McpStdioHandler(mcpServer = mcpServer, output = originalOut)
             runBlocking {
                 stdioHandler.run()
             }
+            kotlin.system.exitProcess(0)
         } else {
             // HTTP / SSE / Swagger Server mode
             val sessionManager = McpSessionManager(mcpServer)
