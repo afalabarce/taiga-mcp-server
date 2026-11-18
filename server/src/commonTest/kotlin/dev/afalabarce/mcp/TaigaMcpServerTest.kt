@@ -766,4 +766,73 @@ class TaigaMcpServerTest {
         assertEquals("antonio", item.assignedTo)
         Unit
     }
+
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    @Test
+    fun testParseBasicCredentials() {
+        val encoded = kotlin.io.encoding.Base64.encode("stdio_user:stdio_pass".encodeToByteArray())
+        val fromRaw = dev.afalabarce.mcp.web.auth.parseBasicCredentials(encoded)
+        assertNotNull(fromRaw)
+        assertEquals("stdio_user", fromRaw.first)
+        assertEquals("stdio_pass", fromRaw.second)
+
+        val fromHeader = dev.afalabarce.mcp.web.auth.parseBasicCredentials("Basic $encoded")
+        assertNotNull(fromHeader)
+        assertEquals("stdio_user", fromHeader.first)
+        assertEquals("stdio_pass", fromHeader.second)
+
+        val fromLowerHeader = dev.afalabarce.mcp.web.auth.parseBasicCredentials("basic $encoded")
+        assertNotNull(fromLowerHeader)
+        assertEquals("stdio_user", fromLowerHeader.first)
+        assertEquals("stdio_pass", fromLowerHeader.second)
+
+        assertNull(dev.afalabarce.mcp.web.auth.parseBasicCredentials(""))
+        assertNull(dev.afalabarce.mcp.web.auth.parseBasicCredentials("Basic invalid%%%"))
+    }
+
+    @Test
+    fun testStdioHandlerWithBasicAuth(): Unit = runBlocking {
+        val configManager = ConfigManager(TaigaConfig())
+        val clientFactory = TaigaClientFactory(configManager)
+        val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
+        val mcpServer = McpServer(toolRegistry, configManager)
+
+        var loginCalls = 0
+        val mockBasicAuthManager = object : dev.afalabarce.mcp.web.auth.TaigaBasicAuthManager(configManager, clientFactory) {
+            override suspend fun performLogin(username: String, password: String, targetApiUrl: String): String {
+                loginCalls++
+                if (username == "stdio_user" && password == "stdio_pass") {
+                    return "stdio_jwt_token_789"
+                }
+                throw dev.afalabarce.mcp.taiga.client.TaigaApiException(401, "Invalid credentials")
+            }
+        }
+
+        val inputLines = listOf(
+            """{"jsonrpc":"2.0","id":1,"method":"initialize"}""",
+            """{"jsonrpc":"2.0","id":2,"method":"ping"}""",
+            """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"taiga_get_config","arguments":{}}}""",
+            """{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"taiga_get_config","arguments":{}}}"""
+        ).joinToString("\n") + "\n"
+
+        val inputReader = java.io.BufferedReader(java.io.StringReader(inputLines))
+        val outputBuffer = java.io.ByteArrayOutputStream()
+        val outputStream = java.io.PrintStream(outputBuffer)
+
+        val handler = dev.afalabarce.mcp.mcp.server.McpStdioHandler(
+            mcpServer = mcpServer,
+            output = outputStream,
+            input = inputReader,
+            basicAuthManager = mockBasicAuthManager,
+            basicUsername = "stdio_user",
+            basicPassword = "stdio_pass"
+        )
+        handler.run()
+
+        val responses = outputBuffer.toString().trim().lines()
+        assertEquals(4, responses.size)
+        // Two tools/call requests, but login should only happen once thanks to token caching
+        assertEquals(1, loginCalls)
+        Unit
+    }
 }

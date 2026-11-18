@@ -52,6 +52,21 @@ fun decodeBasicCredentials(base64Text: String): Pair<String, String>? {
 }
 
 /**
+ * Parses Basic Auth credentials from either raw Base64 ("user:pass") or
+ * a "Basic <base64>" header-style value.
+ */
+fun parseBasicCredentials(raw: String): Pair<String, String>? {
+    val trimmed = raw.trim()
+    if (trimmed.isBlank()) return null
+    val base64 = if (trimmed.startsWith("Basic ", ignoreCase = true)) {
+        trimmed.substring(6).trim()
+    } else {
+        trimmed
+    }
+    return decodeBasicCredentials(base64)
+}
+
+/**
  * Configures both Bearer Token and HTTP Basic authentication for the Ktor server.
  */
 fun Application.configureAuthentication(

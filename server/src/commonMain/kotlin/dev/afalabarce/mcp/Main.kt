@@ -16,6 +16,8 @@ import dev.afalabarce.mcp.mcp.server.McpSessionManager
 import dev.afalabarce.mcp.mcp.server.McpStdioHandler
 import dev.afalabarce.mcp.mcp.tools.TaigaToolRegistry
 import dev.afalabarce.mcp.taiga.client.TaigaClientFactory
+import dev.afalabarce.mcp.web.auth.TaigaBasicAuthManager
+import dev.afalabarce.mcp.web.auth.parseBasicCredentials
 import dev.afalabarce.mcp.web.configureServer
 import kotlinx.coroutines.runBlocking
 
@@ -48,6 +50,21 @@ class TaigaMcpCommand : CliktCommand(
     private val taigaToken: String? by option(
         "--taiga-token",
         help = "Taiga Auth / Bearer Token (default: TAIGA_AUTH_TOKEN)"
+    )
+
+    private val taigaBasic: String? by option(
+        "--taiga-basic",
+        help = "Taiga Basic Auth credentials as Base64 'username:password' or 'Basic <base64>' (default: TAIGA_BASIC_AUTH)"
+    )
+
+    private val taigaUsername: String? by option(
+        "--taiga-username", "--taiga-user",
+        help = "Taiga username or email for Basic Auth (default: TAIGA_USERNAME or TAIGA_USER)"
+    )
+
+    private val taigaPassword: String? by option(
+        "--taiga-password",
+        help = "Taiga password for Basic Auth (default: TAIGA_PASSWORD)"
     )
 
     private val taigaProject: String? by option(
@@ -90,10 +107,55 @@ class TaigaMcpCommand : CliktCommand(
             ?: yaml["taiga.api_url"]
             ?: "https://api.taiga.io"
 
-        val resolvedAuthToken = taigaToken?.ifBlank { null }
-            ?: getEnv("TAIGA_AUTH_TOKEN")
-            ?: yaml["taiga.authToken"]
-            ?: yaml["taiga.auth_token"]
+        var resolvedAuthToken = taigaToken?.ifBlank { null }
+            ?: getEnv("TAIGA_AUTH_TOKEN")?.ifBlank { null }
+            ?: yaml["taiga.authToken"]?.ifBlank { null }
+            ?: yaml["taiga.auth_token"]?.ifBlank { null }
+
+        val resolvedUsername = taigaUsername?.ifBlank { null }
+            ?: getEnv("TAIGA_USERNAME")?.ifBlank { null }
+            ?: getEnv("TAIGA_USER")?.ifBlank { null }
+            ?: yaml["taiga.username"]?.ifBlank { null }
+            ?: yaml["taiga.user"]?.ifBlank { null }
+
+        val resolvedPassword = taigaPassword?.ifBlank { null }
+            ?: getEnv("TAIGA_PASSWORD")?.ifBlank { null }
+            ?: yaml["taiga.password"]?.ifBlank { null }
+
+        val resolvedBasicRaw = taigaBasic?.ifBlank { null }
+            ?: getEnv("TAIGA_BASIC_AUTH")?.ifBlank { null }
+            ?: yaml["taiga.basicAuth"]?.ifBlank { null }
+            ?: yaml["taiga.basic_auth"]?.ifBlank { null }
+            ?: yaml["taiga.basic"]?.ifBlank { null }
+
+        val hasExplicitCliBasic = !taigaBasic.isNullOrBlank() ||
+            (!taigaUsername.isNullOrBlank() && !taigaPassword.isNullOrBlank())
+
+        var basicCredentials: Pair<String, String>? = when {
+            resolvedUsername != null && resolvedPassword != null -> Pair(resolvedUsername, resolvedPassword)
+            resolvedBasicRaw != null -> {
+                parseBasicCredentials(resolvedBasicRaw).also {
+                    if (it == null) {
+                        System.err.println("Warning: Invalid Base64 Basic Auth credentials provided via --taiga-basic / TAIGA_BASIC_AUTH.")
+                    }
+                }
+            }
+            else -> null
+        }
+
+        if (hasExplicitCliBasic && taigaToken.isNullOrBlank()) {
+            resolvedAuthToken = null
+        }
+
+        if (resolvedAuthToken != null && resolvedAuthToken.startsWith("Basic ", ignoreCase = true)) {
+            val parsedFromToken = parseBasicCredentials(resolvedAuthToken)
+            if (parsedFromToken != null) {
+                if (basicCredentials == null) {
+                    basicCredentials = parsedFromToken
+                }
+                resolvedAuthToken = null
+            }
+        }
 
         val resolvedDefaultProject = taigaProject?.ifBlank { null }
             ?: getEnv("TAIGA_DEFAULT_PROJECT")
@@ -109,15 +171,18 @@ class TaigaMcpCommand : CliktCommand(
 
         val configManager = ConfigManager(initialConfig)
         val clientFactory = TaigaClientFactory(configManager)
+        val basicAuthManager = TaigaBasicAuthManager(configManager, clientFactory)
         val toolRegistry = TaigaToolRegistry(configManager, clientFactory)
         val mcpServer = McpServer(toolRegistry, configManager)
 
         if (!queryOption.isNullOrBlank()) {
             val format = formatOption?.lowercase() ?: "table"
             runBlocking {
+                val queryAuthToken = initialConfig.authToken
+                    ?: basicCredentials?.let { basicAuthManager.authenticate(it.first, it.second, initialConfig.apiUrl) }
                 val client = clientFactory.getClient(
                     overrideApiUrl = initialConfig.apiUrl,
-                    overrideAuthToken = initialConfig.authToken,
+                    overrideAuthToken = queryAuthToken,
                     overrideProject = initialConfig.defaultProject
                 )
                 val projectId = client.resolveProjectId(initialConfig.defaultProject)
@@ -142,8 +207,19 @@ class TaigaMcpCommand : CliktCommand(
             // MCP Stdio transport mode: redirect System.out to System.err so logs never corrupt JSON-RPC stdout
             val originalOut = System.out
             System.setOut(System.err)
-            System.err.println("Starting Taiga MCP server in stdio mode...")
-            val stdioHandler = McpStdioHandler(mcpServer = mcpServer, output = originalOut)
+            val authModeLabel = when {
+                !initialConfig.authToken.isNullOrBlank() -> "Bearer Token"
+                basicCredentials != null -> "Basic Auth (user: ${basicCredentials.first})"
+                else -> "None (use taiga_login or taiga_set_config)"
+            }
+            System.err.println("Starting Taiga MCP server in stdio mode (Auth: $authModeLabel)...")
+            val stdioHandler = McpStdioHandler(
+                mcpServer = mcpServer,
+                output = originalOut,
+                basicAuthManager = basicAuthManager,
+                basicUsername = basicCredentials?.first,
+                basicPassword = basicCredentials?.second
+            )
             runBlocking {
                 stdioHandler.run()
             }
