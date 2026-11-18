@@ -878,7 +878,7 @@ class TaigaClient(
         val relations = listEpicRelatedUserStories(epicId)
         val relation = relations.firstOrNull { it.userStory == userStoryId || it.id == userStoryId }
             ?: throw IllegalArgumentException("User story $userStoryId is not linked to epic $epicId")
-        val response = httpClient.delete("$baseUrl/api/v1/epics/$epicId/related_userstories/${relation.id}") {
+        val response = httpClient.delete("$baseUrl/api/v1/epics/$epicId/related_userstories/${relation.userStory}") {
             authenticatedRequest(this)
         }
         handleResponse(response)

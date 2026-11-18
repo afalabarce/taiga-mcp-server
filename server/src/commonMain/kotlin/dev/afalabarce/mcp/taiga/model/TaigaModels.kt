@@ -315,7 +315,7 @@ data class TaigaCustomAttributesValues(
 
 @Serializable
 data class TaigaEpicRelatedUserStory(
-    val id: Long,
+    val id: Long? = null,
     val epic: Long,
     @SerialName("user_story") val userStory: Long,
     val order: Long? = null,
